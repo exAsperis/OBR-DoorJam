@@ -4,14 +4,14 @@
   "manifest_version": 1,
   "author": "es Asperis",
   "description": "Link door artwork to Owlbear Rodeo Dynamic Fog doors and keep their visual state synchronized.",
-  "icon": "https://exasperis.github.io/OBR-DoorJam/icon.svg?v=0.1.0",
-  "homepage_url": "https://github.com/exAsperis/OBR-DoorJam",
+  "icon": "https://doorjam.ex-asperis.com/icon.svg?v=0.1.0",
+  "homepage_url": "https://doorjam.ex-asperis.com/",
   "action": {
     "title": "DoorJam",
-    "icon": "https://exasperis.github.io/OBR-DoorJam/icon.svg?v=0.1.0",
-    "popover": "https://exasperis.github.io/OBR-DoorJam/extension.html?v=0.1.0",
+    "icon": "https://doorjam.ex-asperis.com/icon.svg?v=0.1.0",
+    "popover": "https://doorjam.ex-asperis.com/extension.html?v=0.1.0",
     "height": 360,
     "width": 360
   },
-  "background_url": "https://exasperis.github.io/OBR-DoorJam/background.html?v=0.1.0"
+  "background_url": "https://doorjam.ex-asperis.com/background.html?v=0.1.0"
 }

@@ -65,7 +65,8 @@
        y1="33.150871"
        x2="46.135546"
        y2="33.150871"
-       gradientUnits="userSpaceOnUse" />
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(0.80585225,0,0,0.80585225,6.2127281,6.2794402)" />
   </defs>
   <g
      inkscape:groupmode="layer"
@@ -73,20 +74,26 @@
      inkscape:label="Layer 1">
     <path
        id="rect1"
-       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:square;stroke-dasharray:none"
-       d="M 13.161953,63 V 1.6872305 H 50.838047 V 63"
+       style="fill:none;stroke:#000000;stroke-width:2.41756;stroke-linecap:square;stroke-dasharray:none"
+       d="M 16.819317,57.048132 V 7.6390987 H 47.180683 V 57.048132"
        sodipodi:nodetypes="cccc" />
     <path
        id="rect4"
-       style="fill:url(#linearGradient5);stroke:#000000;stroke-width:2;stroke-linecap:square"
-       d="M 14.916882,4.1131106 45.134533,3.1808055 45.079691,59.06427 14.916882,63.012856 Z"
+       style="fill:url(#linearGradient5);stroke:#000000;stroke-width:1.6117;stroke-linecap:square"
+       d="m 18.233531,9.5939996 23.91223,0.4552124 -0.0442,44.485401 -23.868035,2.523879 z"
        sodipodi:nodetypes="ccccc" />
     <ellipse
-       style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:square;stroke-dasharray:none;stroke-opacity:1"
+       style="fill:none;stroke:#000000;stroke-width:1.6117;stroke-linecap:square;stroke-dasharray:none;stroke-opacity:1"
        id="path4"
-       cx="40.198799"
-       cy="31.424164"
-       rx="1.5904028"
-       ry="2.1388175" />
+       cx="38.277973"
+       cy="31.602673"
+       rx="1.2816297"
+       ry="1.7235709" />
+    <circle
+       style="display:none;fill:none;stroke:#000000;stroke-width:1;stroke-linecap:square;stroke-dasharray:1, 6;stroke-dashoffset:0;stroke-opacity:1"
+       id="path5"
+       cx="31.808054"
+       cy="31.917738"
+       r="31.698372" />
   </g>
 </svg>
