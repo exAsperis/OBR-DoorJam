@@ -1,4 +1,4 @@
-import { Command, type Item, type Path } from "@owlbear-rodeo/sdk";
+import { Command, type Item, type Path, type Shape } from "@owlbear-rodeo/sdk";
 import { describe, expect, it } from "vitest";
 import { DYNAMIC_FOG_DOORS_KEY, enumerateDoors, lookupDoor, parseDynamicFogDoors } from "./adapter";
 
@@ -14,6 +14,17 @@ function fogPath(metadataValue: unknown): Path {
   };
 }
 
+function fogRectangle(metadataValue: unknown): Shape {
+  const base = fogPath(metadataValue);
+  return {
+    ...base,
+    type: "SHAPE",
+    width: 100,
+    height: 50,
+    shapeType: "RECTANGLE",
+  };
+}
+
 describe("Dynamic Fog adapter", () => {
   it("rejects malformed external metadata without throwing", () => {
     expect(parseDynamicFogDoors([{ open: "yes" }])).toBeNull();
@@ -23,6 +34,11 @@ describe("Dynamic Fog adapter", () => {
   it("enumerates a door and evaluates its transformed midpoint", () => {
     const item = fogPath([{ open: false, start: { index: 0, distance: 20 }, end: { index: 0, distance: 60 } }]);
     expect(enumerateDoors([item])).toEqual([{ ref: { fogItemId: "fog-1", doorIndex: 0 }, open: false, position: { x: 140, y: 50 } }]);
+  });
+
+  it("enumerates doors attached to Dynamic Fog shape drawings", () => {
+    const item = fogRectangle([{ open: true, start: { index: 0, distance: 10 }, end: { index: 0, distance: 50 } }]);
+    expect(enumerateDoors([item])).toEqual([{ ref: { fogItemId: "fog-1", doorIndex: 0 }, open: true, position: { x: 130, y: 50 } }]);
   });
 
   it("reports deleted and out-of-range door references", () => {

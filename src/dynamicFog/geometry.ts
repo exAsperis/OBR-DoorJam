@@ -1,4 +1,15 @@
-import { Command, MathM, isPath, type Item, type PathCommand, type Vector2 } from "@owlbear-rodeo/sdk";
+import {
+  Command,
+  MathM,
+  isCurve,
+  isLine,
+  isPath,
+  isShape,
+  type Curve,
+  type Item,
+  type PathCommand,
+  type Vector2,
+} from "@owlbear-rodeo/sdk";
 import type { ContourMarker } from "./types";
 
 function point(command: PathCommand): Vector2 | null {
@@ -43,7 +54,7 @@ function sampleSegment(start: Vector2, command: PathCommand): Vector2[] {
   return samples;
 }
 
-function contours(commands: PathCommand[]): Vector2[][] {
+function pathContours(commands: PathCommand[]): Vector2[][] {
   const result: Vector2[][] = [];
   let current: Vector2[] = [];
   let cursor: Vector2 | null = null;
@@ -70,6 +81,68 @@ function contours(commands: PathCommand[]): Vector2[][] {
   return result;
 }
 
+function closed(points: Vector2[]): Vector2[] {
+  return points.length ? [...points, points[0]] : points;
+}
+
+function shapeContour(item: Item): Vector2[] | null {
+  if (!isShape(item)) return null;
+  if (item.shapeType === "RECTANGLE") {
+    return closed([{ x: 0, y: 0 }, { x: item.width, y: 0 }, { x: item.width, y: item.height }, { x: 0, y: item.height }]);
+  }
+  if (item.shapeType === "TRIANGLE") {
+    return closed([{ x: 0, y: 0 }, { x: item.width / 2, y: item.height }, { x: -item.width / 2, y: item.height }]);
+  }
+  const sides = item.shapeType === "HEXAGON" ? 6 : 64;
+  const rx = item.shapeType === "HEXAGON" ? Math.min(item.width, item.height) / 2 : item.width / 2;
+  const ry = item.shapeType === "HEXAGON" ? rx : item.height / 2;
+  return closed(Array.from({ length: sides }, (_, index) => {
+    const angle = -Math.PI / 2 + index * Math.PI * 2 / sides;
+    return { x: Math.cos(angle) * rx, y: Math.sin(angle) * ry };
+  }));
+}
+
+function cardinalPoint(p0: Vector2, p1: Vector2, p2: Vector2, p3: Vector2, tension: number, t: number): Vector2 {
+  const scale = (1 - tension) / 2;
+  const m1 = { x: (p2.x - p0.x) * scale, y: (p2.y - p0.y) * scale };
+  const m2 = { x: (p3.x - p1.x) * scale, y: (p3.y - p1.y) * scale };
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return {
+    x: (2 * t3 - 3 * t2 + 1) * p1.x + (t3 - 2 * t2 + t) * m1.x + (-2 * t3 + 3 * t2) * p2.x + (t3 - t2) * m2.x,
+    y: (2 * t3 - 3 * t2 + 1) * p1.y + (t3 - 2 * t2 + t) * m1.y + (-2 * t3 + 3 * t2) * p2.y + (t3 - t2) * m2.y,
+  };
+}
+
+function curveContour(curve: Curve): Vector2[] {
+  if (curve.points.length < 2) return [...curve.points];
+  const isClosed = curve.style.fillOpacity > 0 || Boolean(curve.style.closed);
+  const input = curve.points;
+  const result: Vector2[] = [input[0]];
+  const segmentCount = isClosed ? input.length : input.length - 1;
+  for (let segment = 0; segment < segmentCount; segment += 1) {
+    const p0 = input[(segment - 1 + input.length) % input.length];
+    const p1 = input[segment];
+    const p2 = input[(segment + 1) % input.length];
+    const p3 = input[(segment + 2) % input.length];
+    const start = !isClosed && segment === 0 ? p1 : p0;
+    const end = !isClosed && segment === segmentCount - 1 ? p2 : p3;
+    for (let step = 1; step <= 24; step += 1) result.push(cardinalPoint(start, p1, p2, end, curve.style.tension, step / 24));
+  }
+  return isClosed ? closed(result.slice(0, -1)) : result;
+}
+
+function drawingContours(item: Item): Vector2[][] {
+  if (isPath(item)) return pathContours(item.commands);
+  if (isLine(item)) return [[item.startPosition, item.endPosition]];
+  if (isShape(item)) {
+    const contour = shapeContour(item);
+    return contour ? [contour] : [];
+  }
+  if (isCurve(item)) return [curveContour(item)];
+  return [];
+}
+
 function atDistance(points: Vector2[], distance: number): Vector2 | null {
   if (!points.length || !Number.isFinite(distance) || distance < 0) return null;
   let remaining = distance;
@@ -88,8 +161,8 @@ function toWorld(item: Item, local: Vector2): Vector2 {
 }
 
 export function markerPosition(item: Item, marker: ContourMarker): Vector2 | null {
-  if (!isPath(item) || !Number.isInteger(marker.index) || marker.index < 0) return null;
-  const contour = contours(item.commands)[marker.index];
+  if (!Number.isInteger(marker.index) || marker.index < 0) return null;
+  const contour = drawingContours(item)[marker.index];
   const local = contour ? atDistance(contour, marker.distance) : null;
   return local ? toWorld(item, local) : null;
 }
