@@ -1,11 +1,21 @@
+import { useEffect, useState } from "react";
+import { DoorRow } from "./components/DoorRow";
 import { StatusPanel } from "./components/StatusPanel";
 import { EXTENSION_NAME } from "./constants";
+import { doorStateErrorMessage, setLinkedDoorState } from "./doorJam/control";
+import { clearDoorHighlight } from "./doorJam/highlight";
+import { useDoorJamDoors, type DoorListEntry } from "./hooks/useDoorJamDoors";
 import { useOwlbear } from "./hooks/useOwlbear";
-import { useDoorJamStatus } from "./hooks/useDoorJamStatus";
+import { RELEASE_VERSION } from "./version";
 
 export default function App() {
-  const { status, role, playerName, sceneReady, error, refreshing, refresh } = useOwlbear();
-  const doorStatus = useDoorJamStatus(status === "ready" && role === "GM" && sceneReady);
+  const { status, role, sceneReady, error, refreshing, refresh } = useOwlbear();
+  const doorList = useDoorJamDoors(status === "ready" && role === "GM", sceneReady);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Record<string, string>>({});
+
+  useEffect(() => () => { void clearDoorHighlight(); }, []);
+  useEffect(() => { if (role !== "GM" || !sceneReady) void clearDoorHighlight(); }, [role, sceneReady]);
 
   if (status === "connecting") {
     return <StatusPanel title="Connecting to Owlbear Rodeo" message="Waiting for the room SDK to become ready…" />;
@@ -15,37 +25,30 @@ export default function App() {
     return <StatusPanel title="Extension unavailable" message={error ?? "Unable to initialize the extension."} onRetry={() => void refresh()} />;
   }
 
-  return (
-    <main className="app-shell">
-      <section className="hero-card">
-        <div className="title-row">
-          <div>
-            <span className="eyebrow">Owlbear Rodeo extension</span>
-            <h1>{EXTENSION_NAME}</h1>
-          </div>
-          <button className="secondary-button" disabled={refreshing} onClick={() => void refresh()}>
-            {refreshing ? "Refreshing…" : "Refresh"}
-          </button>
-        </div>
-        <p className="intro">Put closed-door art over a Dynamic Fog door, select it, then choose <strong>Link to Dynamic Fog Door</strong>.</p>
-      </section>
+  if (role !== "GM") return <StatusPanel title="GM only" message="DoorJam controls are available only to the Game Master." />;
 
-      <section className="content-card" aria-labelledby="room-state-heading">
-        <span className="eyebrow">Scene status</span>
-        <h2 id="room-state-heading">DoorJam at a glance</h2>
-        <dl className="facts">
-          <div><dt>Dynamic Fog doors</dt><dd>{doorStatus.dynamicFogDoors}</dd></div>
-          <div><dt>Linked images</dt><dd>{doorStatus.linkedImages}</dd></div>
-          <div><dt>Invalid links</dt><dd>{doorStatus.invalidLinks}</dd></div>
-        </dl>
-        {role !== "GM" && <div className="notice" role="status">DoorJam setup and controls are currently GM-only.</div>}
-        {role === "GM" && !sceneReady && <div className="notice" role="status">Open a scene to inspect Dynamic Fog doors.</div>}
-        {role === "GM" && sceneReady && doorStatus.dynamicFogDoors === 0 && <div className="notice" role="status">No valid Dynamic Fog doors found. Make sure Dynamic Fog is active and doors exist.</div>}
-        {doorStatus.invalidLinks > 0 && <div className="notice" role="status">Select invalid DoorJam images and use <strong>Relink Dynamic Fog Door</strong>.</div>}
-        <button className="secondary-button" disabled={doorStatus.loading || !sceneReady} onClick={() => void doorStatus.refresh()}>{doorStatus.loading ? "Checking…" : "Check scene"}</button>
-      </section>
+  const toggleDoor = async (door: DoorListEntry) => {
+    if (!door.state) return;
+    setBusyId(door.id);
+    setMessages((current) => ({ ...current, [door.id]: "" }));
+    const result = await setLinkedDoorState(door.id, door.state === "closed");
+    if (!result.ok) setMessages((current) => ({ ...current, [door.id]: doorStateErrorMessage(result.reason) }));
+    await doorList.refresh();
+    setBusyId(null);
+  };
 
-      <footer>{playerName || "Unnamed player"} · {role ?? "Unknown role"} · DoorJam 0.1.0</footer>
-    </main>
-  );
+  return <main className="app-shell">
+    <header className="panel-header">
+      <div><span className="eyebrow">GM door controls</span><h1>{EXTENSION_NAME}</h1></div>
+      <button className="secondary-button" disabled={refreshing || doorList.loading} onClick={() => void doorList.refresh()}>{refreshing || doorList.loading ? "Refreshing…" : "Refresh"}</button>
+    </header>
+    {!sceneReady && <div className="notice" role="status">Open a scene to control DoorJam doors.</div>}
+    {sceneReady && doorList.error && <div className="notice error-notice" role="alert">{doorList.error}</div>}
+    {sceneReady && !doorList.error && doorList.loading && doorList.doors.length === 0 && <div className="empty-state">Loading doors…</div>}
+    {sceneReady && !doorList.error && !doorList.loading && doorList.doors.length === 0 && <div className="empty-state">No linked DoorJam doors in this scene.<span>Place and link a door image using its context menu.</span></div>}
+    {sceneReady && doorList.doors.length > 0 && <ul className="door-list" aria-label="Linked DoorJam doors">
+      {doorList.doors.map((door) => <DoorRow key={door.id} door={door} busy={busyId === door.id} message={messages[door.id]} onRename={doorList.renameDoor} onToggle={toggleDoor} />)}
+    </ul>}
+    <footer>DoorJam {RELEASE_VERSION}</footer>
+  </main>;
 }

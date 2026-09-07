@@ -1,9 +1,9 @@
 import OBR, { isImage, type ContextMenuContext, type Image } from "@owlbear-rodeo/sdk";
 import { DOORJAM_METADATA_KEY, EXTENSION_ID } from "../constants";
-import { chooseOpenArtwork, renderDoorImage } from "../doorJam/artwork";
+import { chooseOpenArtwork } from "../doorJam/artwork";
+import { doorStateErrorMessage, setLinkedDoorState } from "../doorJam/control";
 import { linkNearestDoor } from "../doorJam/linking";
-import { readDoorJamMetadata, removeDoorJamMetadata } from "../doorJam/metadata";
-import { getDoorState, setDoorState } from "../dynamicFog/adapter";
+import { removeDoorJamMetadata } from "../doorJam/metadata";
 
 const ids = ["link", "relink", "set-open", "open", "close", "unlink"] as const;
 const icon = "/icon.svg";
@@ -43,14 +43,8 @@ export async function setupContextMenu(): Promise<() => void> {
       icons: [{ icon, label: open ? "Open Door" : "Close Door", filter: { ...configuredFilter, every: [...configuredFilter.every, { key: ["metadata", DOORJAM_METADATA_KEY, "renderedState"], value: open ? "closed" : "open" }] } }],
       onClick: async (context) => {
         const image = await selectedImage(context); if (!image) return;
-        const metadata = readDoorJamMetadata(image); if (!metadata) return;
-        const current = await getDoorState(metadata.fogDoor);
-        if (!current.ok) { await notify("The linked Dynamic Fog door is no longer valid. Use Relink Dynamic Fog Door.", "ERROR"); return; }
-        if (open && !metadata.openImage) { await notify("Set the open door image first.", "ERROR"); return; }
-        const result = await setDoorState(metadata.fogDoor, open);
-        if (!result.ok) { await notify("Dynamic Fog rejected the door update. Relink this image and try again.", "ERROR"); return; }
-        const rendered = await renderDoorImage(image.id, open);
-        if (rendered !== "updated") await notify("The fog door changed, but DoorJam could not render the configured artwork.", "ERROR");
+        const result = await setLinkedDoorState(image.id, open);
+        if (!result.ok) await notify(doorStateErrorMessage(result.reason), "ERROR");
       },
     });
   }
