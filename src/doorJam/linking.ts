@@ -1,10 +1,11 @@
 import OBR, { isImage, type Image } from "@owlbear-rodeo/sdk";
 import { LINK_DISTANCE_THRESHOLD } from "../constants";
 import { findNearestDoor } from "../dynamicFog/adapter";
-import { snapshotArtwork } from "./artwork";
+import { chooseOpenArtwork, snapshotArtwork } from "./artwork";
 import { readDoorJamMetadata, writeDoorJamMetadata } from "./metadata";
 
 export type LinkResult = { ok: true; distance: number; doorCount: number } | { ok: false; message: string };
+export type LinkAndArtworkResult = LinkResult & { artworkRequested?: boolean; artworkSet?: boolean };
 
 export async function linkNearestDoor(image: Image): Promise<LinkResult> {
   const bounds = await OBR.scene.items.getItemBounds([image.id]);
@@ -24,4 +25,14 @@ export async function linkNearestDoor(image: Image): Promise<LinkResult> {
     });
   });
   return { ok: true, distance: nearest.distance, doorCount: (await OBR.scene.items.getItems((item) => item.layer === "FOG")).length };
+}
+
+export async function linkNearestDoorAndChooseArtwork(image: Image): Promise<LinkAndArtworkResult> {
+  const result = await linkNearestDoor(image);
+  if (!result.ok) return result;
+  const linked = (await OBR.scene.items.getItems([image.id]))[0];
+  const metadata = linked ? readDoorJamMetadata(linked) : null;
+  if (!metadata || metadata.openImage) return result;
+  const artworkSet = await chooseOpenArtwork(image.id);
+  return { ...result, artworkRequested: true, artworkSet };
 }

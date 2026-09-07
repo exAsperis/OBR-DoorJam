@@ -2,7 +2,7 @@ import OBR, { isImage, type ContextMenuContext, type Image } from "@owlbear-rode
 import { DOORJAM_METADATA_KEY, EXTENSION_ID } from "../constants";
 import { chooseOpenArtwork } from "../doorJam/artwork";
 import { doorStateErrorMessage, setLinkedDoorState } from "../doorJam/control";
-import { linkNearestDoor } from "../doorJam/linking";
+import { linkNearestDoorAndChooseArtwork } from "../doorJam/linking";
 import { removeDoorJamMetadata } from "../doorJam/metadata";
 
 const ids = ["link", "relink", "set-open", "open", "close", "unlink"] as const;
@@ -20,18 +20,31 @@ async function notify(message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT")
   await OBR.notification.show(message, variant);
 }
 
+async function linkAndNotify(image: Image, relinking = false) {
+  try {
+    const result = await linkNearestDoorAndChooseArtwork(image);
+    if (!result.ok) { await notify(result.message, "ERROR"); return; }
+    if (result.artworkRequested && !result.artworkSet) {
+      await notify(`${relinking ? "Link updated" : "Door linked"}. Choose Set Open Door Image to finish setup.`);
+      return;
+    }
+    await notify(relinking ? "DoorJam link updated." : `Linked to nearest Dynamic Fog door (${Math.round(result.distance)}px away).`);
+  } catch {
+    await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR");
+  }
+}
+
 export async function setupContextMenu(): Promise<() => void> {
   await OBR.contextMenu.create({
     id: `${EXTENSION_ID}/context-menu/link`, icons: [{ icon, label: "Link to Dynamic Fog Door", filter: { ...imageFilter, every: [...imageFilter.every, { key: ["metadata", DOORJAM_METADATA_KEY], value: undefined }] } }],
     onClick: async (context) => {
       const image = await selectedImage(context); if (!image) return;
-      try { const result = await linkNearestDoor(image); await notify(result.ok ? `Linked to nearest Dynamic Fog door (${Math.round(result.distance)}px away).` : result.message, result.ok ? "DEFAULT" : "ERROR"); }
-      catch { await notify("DoorJam could not inspect Dynamic Fog. Check that the extension and scene are available.", "ERROR"); }
+      await linkAndNotify(image);
     },
   });
   await OBR.contextMenu.create({
     id: `${EXTENSION_ID}/context-menu/relink`, icons: [{ icon, label: "Relink Dynamic Fog Door", filter: configuredFilter }],
-    onClick: async (context) => { const image = await selectedImage(context); if (!image) return; const result = await linkNearestDoor(image); await notify(result.ok ? "DoorJam link updated." : result.message, result.ok ? "DEFAULT" : "ERROR"); },
+    onClick: async (context) => { const image = await selectedImage(context); if (!image) return; await linkAndNotify(image, true); },
   });
   await OBR.contextMenu.create({
     id: `${EXTENSION_ID}/context-menu/set-open`, icons: [{ icon, label: "Set Open Door Image", filter: configuredFilter }],

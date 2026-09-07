@@ -22,6 +22,20 @@ export async function setLinkedDoorState(imageId: string, open: boolean): Promis
   }
 }
 
+export async function toggleLinkedDoorState(imageId: string): Promise<DoorStateCommandResult> {
+  try {
+    const image = (await OBR.scene.items.getItems([imageId]))[0];
+    if (!image || !isImage(image)) return { ok: false, reason: "invalid-image" };
+    const metadata = readDoorJamMetadata(image);
+    if (!metadata) return { ok: false, reason: "invalid-link" };
+    const current = await getDoorState(metadata.fogDoor);
+    if (!current.ok) return { ok: false, reason: "invalid-link" };
+    return setLinkedDoorState(imageId, !current.door.open);
+  } catch {
+    return { ok: false, reason: "update-failed" };
+  }
+}
+
 export function doorStateErrorMessage(reason: Exclude<DoorStateCommandResult, { ok: true }>["reason"]): string {
   switch (reason) {
     case "invalid-image": return "The DoorJam image no longer exists.";

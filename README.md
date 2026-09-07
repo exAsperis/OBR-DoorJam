@@ -5,9 +5,10 @@ DoorJam links ordinary Owlbear Rodeo image items to doors created by the officia
 ## GM workflow
 
 1. Place closed-door artwork over an existing Dynamic Fog door.
-2. Select or right-click the image and choose **Link to Dynamic Fog Door**.
-3. Choose **Set Open Door Image** and select the matching asset from Owlbear's image picker.
-4. Use **Open Door** or **Close Door** on the image.
+2. Press **J** to activate the DoorJam tool, choose **Link**, and click the image. DoorJam links the nearest Dynamic Fog door and opens the image picker for the open artwork.
+3. Switch to **Operate** and click a linked door image to open or close it with one click—even when the image is locked.
+
+The original context-menu link, relink, artwork, and open/close actions remain available as an alternative workflow.
 
 DoorJam automatically mirrors changes made through Dynamic Fog itself. Use **Relink Dynamic Fog Door** if the underlying fog item or door index changes, or **Unlink DoorJam Door** to remove only DoorJam metadata.
 
@@ -20,6 +21,6 @@ pnpm dev
 
 Install `http://localhost:5173/manifest-local.json` in an Owlbear Rodeo development room. Run `pnpm build` for a production build.
 
-The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.2.0.json`).
+The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.3.0.json`).
 
 The private Dynamic Fog metadata key `rodeo.owlbear.dynamic-fog/doors` is isolated in `src/dynamicFog/adapter.ts`. Dynamic Fog does not expose a formal door API, so future representation changes should require updates only in that adapter and its geometry helper.
