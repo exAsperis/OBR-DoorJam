@@ -87,7 +87,7 @@ export function doorStateErrorMessage(reason: Exclude<DoorStateCommandResult, { 
     case "invalid-image": return "The DoorJam image no longer exists.";
     case "invalid-link": return "This image is not configured as a DoorJam door.";
     case "missing-open-artwork": return "Set the open door image first.";
-    case "locked": return "This door is locked by the GM.";
+    case "locked": return "This door is locked.";
     case "player-operation-disabled": return "The GM has disabled player door operation for this scene.";
     case "render-failed": return "DoorJam could not render this door's artwork.";
     default: return "Dynamic Fog could not update this door. Try relinking it.";
