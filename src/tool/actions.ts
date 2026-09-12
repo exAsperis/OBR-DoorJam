@@ -1,69 +1,78 @@
-import OBR, { isImage, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
+import OBR, { isImage, type Image, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "../constants";
+import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
+import { chooseDoorArtwork } from "../doorJam/artwork";
 import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control";
 import { linkNearestDoorAndChooseArtwork } from "../doorJam/linking";
-import { readDoorJamMetadata } from "../doorJam/metadata";
+import { readDoorJamMetadata, removeDoorJamMetadata } from "../doorJam/metadata";
 
 export const DOORJAM_TOOL_ID = `${EXTENSION_ID}/tool`;
-export const OPERATE_MODE_ID = `${DOORJAM_TOOL_ID}/operate`;
-export const LINK_MODE_ID = `${DOORJAM_TOOL_ID}/link`;
+export const modeId = (action: DoorActionName) => `${DOORJAM_TOOL_ID}/${action}`;
 
-async function canUseTool(): Promise<boolean> {
-  return await OBR.player.getRole() === "GM" && await OBR.scene.isReady();
+async function selectedDoorImage(target: Item | undefined, action: DoorActionName): Promise<Image | null> {
+  if (await OBR.player.getRole() !== "GM" || !(await OBR.scene.isReady()) || !target || !isImage(target)) return null;
+  const configured = Boolean(readDoorJamMetadata(target));
+  if (action !== "link" && !configured) return null;
+  return target;
 }
 
 async function notify(message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT") {
   await OBR.notification.show(message, variant);
 }
 
-export async function operateDoorTarget(target: Item | undefined): Promise<void> {
-  if (!await canUseTool() || !target || !isImage(target) || !readDoorJamMetadata(target)) return;
-  const result = await toggleLinkedDoorState(target.id);
-  if (!result.ok) await notify(doorStateErrorMessage(result.reason), "ERROR");
-}
-
-export async function linkDoorTarget(target: Item | undefined): Promise<void> {
-  if (!await canUseTool() || !target || !isImage(target)) return;
-  try {
-    const result = await linkNearestDoorAndChooseArtwork(target);
-    if (!result.ok) { await notify(result.message, "ERROR"); return; }
-    if (result.artworkRequested && !result.artworkSet) {
-      await notify("Door linked. Choose Set Open Door Image when you are ready to finish setup.");
-      return;
-    }
-    await notify(`Door linked (${Math.round(result.distance)}px away).`);
-  } catch {
-    await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR");
+export async function performDoorAction(action: DoorActionName, target: Item | undefined): Promise<void> {
+  const image = await selectedDoorImage(target, action);
+  if (!image) return;
+  if (action === "link") {
+    const relinking = Boolean(readDoorJamMetadata(image));
+    try {
+      const result = await linkNearestDoorAndChooseArtwork(image);
+      if (!result.ok) { await notify(result.message, "ERROR"); return; }
+      if (result.artworkRequested && !result.artworkSet) {
+        await notify("Door linked. Choose Set Open Door Image when you are ready to finish setup.");
+        return;
+      }
+      await notify(relinking ? "DoorJam link updated." : `Door linked (${Math.round(result.distance)}px away).`);
+    } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
+    return;
   }
+  if (action === "operate") {
+    const result = await toggleLinkedDoorState(image.id);
+    if (!result.ok) await notify(doorStateErrorMessage(result.reason), "ERROR");
+    return;
+  }
+  if (action === "setOpen" || action === "setClosed") {
+    const state = action === "setOpen" ? "open" : "closed";
+    if (await chooseDoorArtwork(image.id, state)) await notify(`${state === "open" ? "Open" : "Closed"} door artwork saved.`);
+    return;
+  }
+  await OBR.scene.items.updateItems([image.id], (items) => { if (items[0]) removeDoorJamMetadata(items[0]); });
+  await notify("DoorJam link removed. Dynamic Fog was not changed.");
 }
 
-const targetCursor = (modeId: string) => [{ cursor: "pointer", filter: { activeTools: [DOORJAM_TOOL_ID], activeModes: [modeId] } }];
+const actions = Object.keys(DOOR_ACTIONS) as DoorActionName[];
+const targetCursor = (action: DoorActionName) => [{ cursor: "pointer", filter: { activeTools: [DOORJAM_TOOL_ID], activeModes: [modeId(action)] } }];
 
 export async function setupDoorJamTool(): Promise<() => void> {
   await OBR.tool.create({
     id: DOORJAM_TOOL_ID,
     icons: [{ icon: "/icon.svg", label: "DoorJam", filter: { roles: ["GM"] } }],
     disabled: { roles: ["PLAYER"] },
-    defaultMode: OPERATE_MODE_ID,
+    defaultMode: modeId("operate"),
     shortcut: "J",
   });
-  await OBR.tool.createMode({
-    id: OPERATE_MODE_ID,
-    icons: [{ icon: "/tool-operate.svg", label: "Operate Door", filter: { activeTools: [DOORJAM_TOOL_ID], roles: ["GM"] } }],
-    disabled: { roles: ["PLAYER"] },
-    cursors: targetCursor(OPERATE_MODE_ID),
-    onToolClick: async (_context, event: ToolEvent) => { await operateDoorTarget(event.target); return false; },
-  });
-  await OBR.tool.createMode({
-    id: LINK_MODE_ID,
-    icons: [{ icon: "/tool-link.svg", label: "Link Door", filter: { activeTools: [DOORJAM_TOOL_ID], roles: ["GM"] } }],
-    disabled: { roles: ["PLAYER"] },
-    cursors: targetCursor(LINK_MODE_ID),
-    onToolClick: async (_context, event: ToolEvent) => { await linkDoorTarget(event.target); return false; },
-  });
+  for (const action of actions) {
+    const definition = DOOR_ACTIONS[action];
+    await OBR.tool.createMode({
+      id: modeId(action),
+      icons: [{ icon: definition.icon, label: definition.label, filter: { activeTools: [DOORJAM_TOOL_ID], roles: ["GM"] } }],
+      disabled: { roles: ["PLAYER"] },
+      cursors: targetCursor(action),
+      onToolClick: async (_context, event: ToolEvent) => { await performDoorAction(action, event.target); return false; },
+    });
+  }
   return () => {
-    void OBR.tool.removeMode(OPERATE_MODE_ID);
-    void OBR.tool.removeMode(LINK_MODE_ID);
+    for (const action of actions) void OBR.tool.removeMode(modeId(action));
     void OBR.tool.remove(DOORJAM_TOOL_ID);
   };
 }

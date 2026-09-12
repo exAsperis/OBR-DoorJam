@@ -11,6 +11,7 @@ export default defineConfig({
         showcase: "index.html",
         extension: "extension.html",
         background: "background.html",
+        contextMenu: "context-menu.html",
       },
     },
   },

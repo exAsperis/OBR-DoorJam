@@ -3,7 +3,7 @@
    viewBox="0 0 64 64"
    version="1.1"
    id="svg3"
-   sodipodi:docname="tool-link.svg"
+   sodipodi:docname="tool-unlink.svg"
    inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
@@ -45,12 +45,5 @@
      stroke-width="6"
      stroke-linecap="round"
      id="path2"
-     style="stroke:#000000;stroke-opacity:1" />
-  <path
-     d="M23 41l18-18"
-     stroke="#d97706"
-     stroke-width="7"
-     stroke-linecap="round"
-     id="path3"
      style="stroke:#000000;stroke-opacity:1" />
 </svg>

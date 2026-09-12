@@ -1,3 +1,4 @@
+import OBR from "@owlbear-rodeo/sdk";
 import { useEffect, useState } from "react";
 import { DoorRow } from "./components/DoorRow";
 import { StatusPanel } from "./components/StatusPanel";
@@ -13,9 +14,23 @@ export default function App() {
   const doorList = useDoorJamDoors(status === "ready" && role === "GM", sceneReady);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Record<string, string>>({});
+  const [selection, setSelection] = useState<string[]>([]);
 
   useEffect(() => () => { void clearDoorHighlight(); }, []);
   useEffect(() => { if (role !== "GM" || !sceneReady) void clearDoorHighlight(); }, [role, sceneReady]);
+  useEffect(() => {
+    if (status !== "ready" || role !== "GM" || !sceneReady) { setSelection([]); return; }
+    let active = true;
+    void OBR.player.getSelection().then((ids) => { if (active) setSelection(ids ?? []); });
+    const removePlayer = OBR.player.onChange((player) => setSelection(player.selection ?? []));
+    return () => { active = false; removePlayer(); };
+  }, [status, role, sceneReady]);
+
+  const selectedDoorId = selection.find((id) => doorList.doors.some((door) => door.id === id));
+  useEffect(() => {
+    if (!selectedDoorId) return;
+    document.querySelector<HTMLElement>(`[data-door-id="${CSS.escape(selectedDoorId)}"]`)?.scrollIntoView({ block: "nearest" });
+  }, [selectedDoorId]);
 
   if (status === "connecting") {
     return <StatusPanel title="Connecting to Owlbear Rodeo" message="Waiting for the room SDK to become ready…" />;
@@ -47,7 +62,7 @@ export default function App() {
     {sceneReady && !doorList.error && doorList.loading && doorList.doors.length === 0 && <div className="empty-state">Loading doors…</div>}
     {sceneReady && !doorList.error && !doorList.loading && doorList.doors.length === 0 && <div className="empty-state">No linked DoorJam doors in this scene.<span>Place and link a door image using its context menu.</span></div>}
     {sceneReady && doorList.doors.length > 0 && <ul className="door-list" aria-label="Linked DoorJam doors">
-      {doorList.doors.map((door) => <DoorRow key={door.id} door={door} busy={busyId === door.id} message={messages[door.id]} onRename={doorList.renameDoor} onToggle={toggleDoor} />)}
+      {doorList.doors.map((door) => <DoorRow key={door.id} door={door} selected={door.id === selectedDoorId} busy={busyId === door.id} message={messages[door.id]} onRename={doorList.renameDoor} onToggle={toggleDoor} />)}
     </ul>}
     <footer>DoorJam {RELEASE_VERSION}</footer>
   </main>;

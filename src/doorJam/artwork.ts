@@ -18,7 +18,7 @@ export function applyArtwork(image: Image, artwork: DoorImageState): void {
   image.grid = { ...artwork.grid, offset: { ...artwork.grid.offset } };
 }
 
-export async function chooseOpenArtwork(imageId: string): Promise<boolean> {
+export async function chooseDoorArtwork(imageId: string, state: "open" | "closed"): Promise<boolean> {
   const [asset] = await OBR.assets.downloadImages(false, undefined, "PROP");
   if (!asset) return false;
   await OBR.scene.items.updateItems([imageId], (items) => {
@@ -26,11 +26,13 @@ export async function chooseOpenArtwork(imageId: string): Promise<boolean> {
     if (!image || !isImage(image)) return;
     const metadata = readDoorJamMetadata(image);
     if (!metadata) return;
-    metadata.openImage = { image: asset.image, grid: asset.grid };
+    metadata[state === "open" ? "openImage" : "closedImage"] = { image: asset.image, grid: asset.grid };
     writeDoorJamMetadata(image, metadata);
   });
   return true;
 }
+
+export const chooseOpenArtwork = (imageId: string) => chooseDoorArtwork(imageId, "open");
 
 export async function renderDoorImage(imageId: string, open: boolean): Promise<"updated" | "missing-artwork" | "invalid-image"> {
   let result: "updated" | "missing-artwork" | "invalid-image" = "invalid-image";

@@ -7,6 +7,12 @@ vi.mock("../doorJam/highlight", () => ({ showDoorHighlight: vi.fn(), clearDoorHi
 const door = { id: "door", name: "North Door", thumbnailUrl: "door.png", state: "closed" as const, linkValid: true, hasOpenArtwork: true };
 
 describe("DoorRow", () => {
+  it("shows the compact action and scene-selection state", () => {
+    const view = render(<DoorRow door={door} selected busy={false} onRename={vi.fn()} onToggle={vi.fn()} />);
+    expect(view.getByRole("listitem").className).toContain("selected");
+    expect(view.getByRole("button", { name: "Open" })).toBeTruthy();
+  });
+
   it("saves a changed name on Enter", async () => {
     const rename = vi.fn().mockResolvedValue(true);
     const view = render(<DoorRow door={door} busy={false} onRename={rename} onToggle={vi.fn()} />);

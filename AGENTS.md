@@ -14,6 +14,7 @@ Before implementing extension-specific behavior:
 
 Preserve these invariants:
 
+- Follow Semantic Versioning (`MAJOR.MINOR.PATCH`) for every release: increment MAJOR for incompatible behavior or data/API changes, MINOR for backward-compatible features, and PATCH for backward-compatible fixes. Do not reuse a published version.
 - Keep the Owlbear SDK behind `OBR.onReady`.
 - Unsubscribe every `onChange` listener during React effect cleanup.
 - Use Owlbear theme variables with usable CSS fallbacks.

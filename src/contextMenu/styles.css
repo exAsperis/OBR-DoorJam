@@ -1,0 +1,31 @@
+@import "../styles.css";
+
+body { min-width: 0; }
+.menu-panel { display: grid; padding: 6px; gap: 1px; }
+.menu-panel button {
+  position: relative;
+  width: 100%;
+  min-height: 40px;
+  padding: 8px 10px 8px 44px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--obr-text);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+}
+.menu-panel button::before {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  width: 24px;
+  height: 24px;
+  background-color: currentColor;
+  content: "";
+  mask: var(--menu-icon) center / contain no-repeat;
+}
+.menu-panel button:hover { background: color-mix(in srgb, var(--obr-text) 8%, transparent); }
+.menu-panel button:active { background: color-mix(in srgb, var(--obr-text) 13%, transparent); }
+.menu-panel button:disabled { background: transparent; }
+.menu-message { padding: 16px 10px; color: var(--obr-muted); text-align: center; }

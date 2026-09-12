@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   toggle: vi.fn(),
+  choose: vi.fn(),
+  updateItems: vi.fn(),
+  removeMetadata: vi.fn(),
   link: vi.fn(),
   readMetadata: vi.fn(),
   notify: vi.fn(),
@@ -11,33 +14,44 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@owlbear-rodeo/sdk", () => ({
   default: {
     player: { getRole: vi.fn().mockResolvedValue("GM") },
-    scene: { isReady: vi.fn().mockResolvedValue(true) },
+    scene: { isReady: vi.fn().mockResolvedValue(true), items: { updateItems: mocks.updateItems } },
     notification: { show: mocks.notify },
   },
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
 vi.mock("../doorJam/control", () => ({ toggleLinkedDoorState: mocks.toggle, doorStateErrorMessage: () => "error" }));
 vi.mock("../doorJam/linking", () => ({ linkNearestDoorAndChooseArtwork: mocks.link }));
-vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata }));
+vi.mock("../doorJam/artwork", () => ({ chooseDoorArtwork: mocks.choose }));
+vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata }));
 
-import { linkDoorTarget, operateDoorTarget } from "./actions";
+import { performDoorAction } from "./actions";
 
 const image = { id: "door", type: "IMAGE" } as Image;
 
 describe("DoorJam tool modes", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.readMetadata.mockReturnValue(undefined);
+  });
 
   it("operates only configured image targets", async () => {
     mocks.readMetadata.mockReturnValue({ fogDoor: {} });
     mocks.toggle.mockResolvedValue({ ok: true });
-    await operateDoorTarget(image);
+    await performDoorAction("operate", image);
     expect(mocks.toggle).toHaveBeenCalledWith("door");
   });
 
   it("links an image and reports a cancelled automatic artwork picker", async () => {
     mocks.link.mockResolvedValue({ ok: true, distance: 10, doorCount: 1, artworkRequested: true, artworkSet: false });
-    await linkDoorTarget(image);
+    await performDoorAction("link", image);
     expect(mocks.link).toHaveBeenCalledWith(image);
     expect(mocks.notify).toHaveBeenCalledWith(expect.stringContaining("Door linked"), "DEFAULT");
+  });
+
+  it("sets closed artwork through its tool action", async () => {
+    mocks.readMetadata.mockReturnValue({ fogDoor: {} });
+    mocks.choose.mockResolvedValue(true);
+    await performDoorAction("setClosed", image);
+    expect(mocks.choose).toHaveBeenCalledWith("door", "closed");
   });
 });
