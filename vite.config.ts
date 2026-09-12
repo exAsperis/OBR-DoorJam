@@ -9,7 +9,6 @@ export default defineConfig({
     rollupOptions: {
       input: {
         showcase: "index.html",
-        extension: "extension.html",
         background: "background.html",
         contextMenu: "context-menu.html",
       },

@@ -6,8 +6,10 @@ const mocks = vi.hoisted(() => ({
   choose: vi.fn(),
   updateItems: vi.fn(),
   removeMetadata: vi.fn(),
+  removeFogLink: vi.fn(),
+  setLocked: vi.fn(),
   link: vi.fn(),
-  linkNew: vi.fn(),
+  getDoorState: vi.fn(),
   readMetadata: vi.fn(),
   notify: vi.fn(),
 }));
@@ -21,9 +23,11 @@ vi.mock("@owlbear-rodeo/sdk", () => ({
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
 vi.mock("../doorJam/control", () => ({ toggleLinkedDoorState: mocks.toggle, doorStateErrorMessage: () => "error" }));
-vi.mock("../doorJam/linking", () => ({ linkNearestDoorAndChooseArtwork: mocks.link, createAndLinkDoor: mocks.linkNew }));
+vi.mock("../doorJam/linking", () => ({ linkNearbyDoorOrCreate: mocks.link }));
+vi.mock("../dynamicFog/adapter", () => ({ getDoorState: mocks.getDoorState }));
 vi.mock("../doorJam/artwork", () => ({ chooseDoorArtwork: mocks.choose }));
-vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata }));
+vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata, removeFogDoorLink: mocks.removeFogLink, setDoorLocked: mocks.setLocked }));
+vi.mock("../doorJam/settings", () => ({ getDoorJamSettings: vi.fn().mockResolvedValue({ playersCanOperate: true }), setPlayersCanOperate: vi.fn() }));
 
 import { performDoorAction } from "./actions";
 
@@ -33,6 +37,7 @@ describe("DoorJam tool modes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.readMetadata.mockReturnValue(undefined);
+    mocks.updateItems.mockImplementation(async (_ids, update) => update([image]));
   });
 
   it("operates only configured image targets", async () => {
@@ -43,9 +48,9 @@ describe("DoorJam tool modes", () => {
   });
 
   it("links an image and reports a cancelled automatic artwork picker", async () => {
-    mocks.link.mockResolvedValue({ ok: true, distance: 10, doorCount: 1, artworkRequested: true, artworkSet: false });
+    mocks.link.mockResolvedValue({ ok: true, outcome: "linked-existing", distance: 10, doorCount: 1, artworkRequested: true, artworkSet: false });
     await performDoorAction("link", image);
-    expect(mocks.link).toHaveBeenCalledWith(image);
+    expect(mocks.link).toHaveBeenCalledWith(image, expect.any(Function));
     expect(mocks.notify).toHaveBeenCalledWith(expect.stringContaining("Door linked"), "DEFAULT");
   });
 
@@ -56,9 +61,31 @@ describe("DoorJam tool modes", () => {
     expect(mocks.choose).toHaveBeenCalledWith("door", "closed");
   });
 
-  it("creates and links a new door from an unconfigured image", async () => {
-    mocks.linkNew.mockResolvedValue({ ok: true, distance: 0, doorCount: 1 });
-    await performDoorAction("linkNew", image);
-    expect(mocks.linkNew).toHaveBeenCalledWith(image);
+  it("sets open artwork on an unconfigured image", async () => {
+    mocks.choose.mockResolvedValue(true);
+    await performDoorAction("setOpen", image);
+    expect(mocks.choose).toHaveBeenCalledWith("door", "open");
+  });
+
+  it("unlinks a fog-backed door without removing DoorJam metadata", async () => {
+    const metadata = { fogDoor: { fogItemId: "fog", doorIndex: 0 } };
+    mocks.readMetadata.mockReturnValue(metadata);
+    await performDoorAction("unlink", image);
+    expect(mocks.removeFogLink).toHaveBeenCalledWith(image, metadata);
+    expect(mocks.removeMetadata).not.toHaveBeenCalled();
+  });
+
+  it("removes DoorJam metadata from a standalone door", async () => {
+    mocks.readMetadata.mockReturnValue({ renderedState: "closed" });
+    await performDoorAction("remove", image);
+    expect(mocks.removeMetadata).toHaveBeenCalledWith(image);
+    expect(mocks.removeFogLink).not.toHaveBeenCalled();
+  });
+
+  it("toggles the lock state of a configured door", async () => {
+    const metadata = { renderedState: "closed", locked: false };
+    mocks.readMetadata.mockReturnValue(metadata);
+    await performDoorAction("lock", image);
+    expect(mocks.setLocked).toHaveBeenCalledWith(image, metadata, true);
   });
 });

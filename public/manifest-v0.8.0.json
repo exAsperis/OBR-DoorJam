@@ -1,0 +1,17 @@
+{
+  "name": "DoorJam",
+  "version": "0.8.0",
+  "manifest_version": 1,
+  "author": "es Asperis",
+  "description": "Operate artwork-driven doors in Owlbear Rodeo with optional Dynamic Fog synchronization.",
+  "icon": "https://doorjam.ex-asperis.com/icon.svg?v=0.8.0",
+  "homepage_url": "https://doorjam.ex-asperis.com/",
+  "action": {
+    "title": "DoorJam",
+    "icon": "https://doorjam.ex-asperis.com/icon.svg?v=0.8.0",
+    "popover": "https://doorjam.ex-asperis.com/extension.html?v=0.8.0",
+    "height": 520,
+    "width": 360
+  },
+  "background_url": "https://doorjam.ex-asperis.com/background.html?v=0.8.0"
+}

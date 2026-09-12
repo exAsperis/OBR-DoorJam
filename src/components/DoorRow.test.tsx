@@ -4,7 +4,7 @@ import { DoorRow } from "./DoorRow";
 
 vi.mock("../doorJam/highlight", () => ({ showDoorHighlight: vi.fn(), clearDoorHighlight: vi.fn() }));
 
-const door = { id: "door", name: "North Door", thumbnailUrl: "door.png", state: "closed" as const, linkValid: true, hasOpenArtwork: true };
+const door = { id: "door", name: "North Door", thumbnailUrl: "door.png", state: "closed" as const, linkValid: true, hasFogLink: true, hasOpenArtwork: true, locked: false };
 
 describe("DoorRow", () => {
   it("shows the compact action and scene-selection state", () => {
@@ -32,5 +32,11 @@ describe("DoorRow", () => {
     fireEvent.keyDown(input, { key: "Escape" });
     await waitFor(() => expect(input.value).toBe("North Door"));
     expect(rename).not.toHaveBeenCalled();
+  });
+
+  it("keeps a broken Dynamic Fog link operable with a warning", () => {
+    const view = render(<DoorRow door={{ ...door, linkValid: false }} busy={false} onRename={vi.fn()} onToggle={vi.fn()} />);
+    expect(view.getByText("Dynamic Fog link unavailable — operating standalone")).toBeTruthy();
+    expect((view.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

@@ -23,8 +23,8 @@ if (manifest.name !== extensionName) failures.push(`manifest name must be ${exte
 if (manifest.author !== "es Asperis") failures.push(`manifest author must be es Asperis, received ${String(manifest.author)}`);
 if (localManifest.name !== `${extensionName} (Local)`) failures.push(`local manifest name must be ${extensionName} (Local), received ${localManifest.name}`);
 if (localManifest.author !== "es Asperis") failures.push(`local manifest author must be es Asperis, received ${String(localManifest.author)}`);
-if (localManifest.action?.title !== `${extensionName} (Local)`) failures.push(`local manifest action title must be ${extensionName} (Local), received ${String(localManifest.action?.title)}`);
-if (localManifest.action?.popover !== "http://localhost:5173/extension.html") failures.push(`local manifest popover must be http://localhost:5173/extension.html, received ${String(localManifest.action?.popover)}`);
+if (manifest.action !== undefined) failures.push("production manifest must not expose a main extension action");
+if (localManifest.action !== undefined) failures.push("local manifest must not expose a main extension action");
 if (staticWebApp.globalHeaders?.["Access-Control-Allow-Origin"] !== "https://www.owlbear.rodeo") failures.push("Azure Static Web Apps must allow the Owlbear Rodeo origin");
 
 try {

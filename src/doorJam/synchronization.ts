@@ -9,7 +9,7 @@ export async function synchronizeFromItems(items: Item[]): Promise<void> {
   if (syncing) return;
   const changes = items.filter(isImage).flatMap((image) => {
     const metadata = readDoorJamMetadata(image);
-    if (!metadata) return [];
+    if (!metadata?.fogDoor) return [];
     const lookup = lookupDoor(items, metadata.fogDoor);
     if (!lookup.ok) return [];
     const desired = lookup.door.open ? "open" : "closed";

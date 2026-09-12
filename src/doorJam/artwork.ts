@@ -25,7 +25,16 @@ export async function chooseDoorArtwork(imageId: string, state: "open" | "closed
     const image = items[0];
     if (!image || !isImage(image)) return;
     const metadata = readDoorJamMetadata(image);
-    if (!metadata) return;
+    if (!metadata) {
+      if (state !== "open") return;
+      writeDoorJamMetadata(image, {
+        version: 2,
+        closedImage: snapshotArtwork(image),
+        openImage: { image: asset.image, grid: asset.grid },
+        renderedState: "closed",
+      });
+      return;
+    }
     metadata[state === "open" ? "openImage" : "closedImage"] = { image: asset.image, grid: asset.grid };
     writeDoorJamMetadata(image, metadata);
   });

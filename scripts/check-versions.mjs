@@ -19,9 +19,7 @@ const versions = new Map([
   ["public/manifest.json", manifest.version],
   ["public/manifest-local.json", localManifest.version],
   [versionedPath, versionedManifest.version],
-  ["manifest popover query", new URL(manifest.action.popover).searchParams.get("v")],
   ["manifest icon query", new URL(manifest.icon).searchParams.get("v")],
-  ["manifest action icon query", new URL(manifest.action.icon).searchParams.get("v")],
   ["src/version.ts", versionMatch[1]],
 ]);
 

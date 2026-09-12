@@ -25,7 +25,15 @@ describe("buildDoorListEntries", () => {
     const entries = buildDoorListEntries([image("b", "Zulu", "missing"), fog(), image("a", "alpha", "fog")] as Item[]);
     expect(entries.map(({ name, state, linkValid }) => ({ name, state, linkValid }))).toEqual([
       { name: "alpha", state: "open", linkValid: true },
-      { name: "Zulu", state: null, linkValid: false },
+      { name: "Zulu", state: "closed", linkValid: false },
+    ]);
+  });
+
+  it("treats standalone doors as valid and operable", () => {
+    const standalone = image("standalone", "Standalone", "unused");
+    standalone.metadata[DOORJAM_METADATA_KEY] = { version: 2, closedImage: artwork, openImage: artwork, renderedState: "open" };
+    expect(buildDoorListEntries([standalone])).toEqual([
+      expect.objectContaining({ id: "standalone", state: "open", linkValid: true, hasFogLink: false, hasOpenArtwork: true }),
     ]);
   });
 });

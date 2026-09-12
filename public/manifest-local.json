@@ -1,17 +1,10 @@
 {
   "name": "DoorJam (Local)",
-  "version": "0.6.0",
+  "version": "0.9.0",
   "manifest_version": 1,
   "description": "Local development build of DoorJam.",
   "author": "es Asperis",
   "homepage_url": "http://localhost:5173/",
   "icon": "http://localhost:5173/icon.svg",
-  "action": {
-    "title": "DoorJam (Local)",
-    "icon": "http://localhost:5173/icon.svg",
-    "popover": "http://localhost:5173/extension.html",
-    "width": 360,
-    "height": 520
-  },
   "background_url": "http://localhost:5173/background.html"
 }

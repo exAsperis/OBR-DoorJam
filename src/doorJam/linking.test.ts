@@ -1,7 +1,7 @@
 import type { Image } from "@owlbear-rodeo/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ choose: vi.fn(), read: vi.fn(), write: vi.fn(), nearest: vi.fn(), create: vi.fn() }));
+const mocks = vi.hoisted(() => ({ choose: vi.fn(), read: vi.fn(), write: vi.fn(), nearest: vi.fn(), create: vi.fn(), creating: vi.fn() }));
 const image = { id: "door", type: "IMAGE", image: { url: "closed.png" }, grid: {} } as unknown as Image;
 
 vi.mock("@owlbear-rodeo/sdk", () => ({
@@ -16,7 +16,7 @@ vi.mock("../dynamicFog/adapter", () => ({ findNearestDoor: mocks.nearest, create
 vi.mock("./artwork", () => ({ chooseOpenArtwork: mocks.choose, snapshotArtwork: vi.fn(() => ({ image: {}, grid: {} })) }));
 vi.mock("./metadata", () => ({ readDoorJamMetadata: mocks.read, writeDoorJamMetadata: mocks.write }));
 
-import { createAndLinkDoor, linkNearestDoorAndChooseArtwork } from "./linking";
+import { createAndLinkDoor, linkNearbyDoorOrCreate, linkNearestDoorAndChooseArtwork } from "./linking";
 
 describe("linkNearestDoorAndChooseArtwork", () => {
   beforeEach(() => {
@@ -29,14 +29,14 @@ describe("linkNearestDoorAndChooseArtwork", () => {
     mocks.choose.mockResolvedValue(true);
     const result = await linkNearestDoorAndChooseArtwork(image);
     expect(mocks.choose).toHaveBeenCalledWith("door");
-    expect(result).toMatchObject({ ok: true, artworkRequested: true, artworkSet: true });
+    expect(result).toMatchObject({ ok: true, outcome: "linked-existing", artworkRequested: true, artworkSet: true });
   });
 
   it("does not reopen the picker when open artwork is already saved", async () => {
     mocks.read.mockReturnValue({ openImage: {}, closedImage: {}, renderedState: "closed" });
     const result = await linkNearestDoorAndChooseArtwork(image);
     expect(mocks.choose).not.toHaveBeenCalled();
-    expect(result).toMatchObject({ ok: true });
+    expect(result).toMatchObject({ ok: true, outcome: "linked-existing" });
   });
 
   it("creates a fog door and links the image to its new index", async () => {
@@ -45,6 +45,15 @@ describe("linkNearestDoorAndChooseArtwork", () => {
     mocks.choose.mockResolvedValue(true);
     const result = await createAndLinkDoor(image);
     expect(mocks.write).toHaveBeenCalledWith(image, expect.objectContaining({ fogDoor: { fogItemId: "fog", doorIndex: 2 } }));
-    expect(result).toMatchObject({ ok: true, artworkRequested: true, artworkSet: true });
+    expect(result).toMatchObject({ ok: true, outcome: "created-new", artworkRequested: true, artworkSet: true });
+  });
+
+  it("falls back to creating a fog door when none is within range", async () => {
+    mocks.nearest.mockResolvedValue({ ref: { fogItemId: "fog", doorIndex: 0 }, distance: 500 });
+    mocks.create.mockResolvedValue({ ok: true, ref: { fogItemId: "fog", doorIndex: 3 } });
+    mocks.read.mockReturnValue({ openImage: {}, closedImage: {}, renderedState: "closed" });
+    expect(await linkNearbyDoorOrCreate(image, mocks.creating)).toMatchObject({ ok: true, outcome: "created-new" });
+    expect(mocks.creating).toHaveBeenCalledOnce();
+    expect(mocks.create).toHaveBeenCalled();
   });
 });
