@@ -10,7 +10,27 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
   <defs
-     id="defs1" />
+     id="defs1">
+    <marker
+       style="overflow:visible"
+       id="RoundedArrow"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Rounded arrow"
+       markerWidth="0.5"
+       markerHeight="0.5"
+       viewBox="0 0 1 1"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.7)"
+         d="m -0.21114562,-4.1055728 6.42229122,3.21114561 a 1,1 90 0 1 0,1.78885438 L -0.21114562,4.1055728 A 1.236068,1.236068 31.717474 0 1 -2,3 v -6 a 1.236068,1.236068 148.28253 0 1 1.78885438,-1.1055728 z"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:none"
+         id="path8" />
+    </marker>
+  </defs>
   <sodipodi:namedview
      id="namedview1"
      pagecolor="#ffffff"
@@ -22,8 +42,8 @@
      inkscape:deskcolor="#d1d1d1"
      showgrid="false"
      inkscape:zoom="9.1171875"
-     inkscape:cx="9.4327335"
-     inkscape:cy="49.192802"
+     inkscape:cx="13.929734"
+     inkscape:cy="41.514996"
      inkscape:window-width="2560"
      inkscape:window-height="1369"
      inkscape:window-x="1072"
@@ -59,15 +79,24 @@
      inkscape:groupmode="layer"
      id="layer1"
      inkscape:label="Hand">
-    <circle
-       style="fill:#000000;stroke:#000000;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;fill-opacity:1"
-       id="path3"
-       cx="32.658096"
-       cy="18.152529"
-       r="10.639246" />
     <path
+       style="fill:#000000;stroke:#000000;stroke-width:6;stroke-linecap:round;stroke-miterlimit:0"
+       d="M 7.1293916,57.254498 H 58.351329"
+       id="path2" />
+    <path
+       style="fill:#000000;stroke:#000000;stroke-width:6;stroke-linecap:round;stroke-miterlimit:0;stroke-dasharray:6, 6;stroke-dashoffset:0"
+       d="M 6.7455011,56.870607 V 5.6486709"
+       id="path3"
+       inkscape:transform-center-y="-25.994859" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:2.55293;stroke-linecap:round;stroke-miterlimit:0;stroke-dasharray:2.55293, 5.10587;stroke-dashoffset:0;marker-start:url(#RoundedArrow);marker-end:url(#RoundedArrow)"
+       d="M 21.865424,8.3298167 C 54.066956,7.9564656 55.280346,41.74474 55.280346,41.74474"
        id="path4"
-       style="fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:8;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
-       d="M 52.703125 7.8417969 L 52.703125 36.689453 L 52.703125 7.8417969 z M 12.449219 24.84375 L 12.449219 41.021484 L 12.449219 24.84375 z M 52.703125 37.292969 L 31.972656 48.259766 L 12.558594 41.734375 L 24.623047 59.119141 L 42.392578 59.173828 L 52.703125 37.292969 z " />
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:round;stroke-miterlimit:0;stroke-dasharray:none;stroke-dashoffset:0;stroke-linejoin:round"
+       d="m 19.74293,36.743788 8.774636,9.432733 17.11054,-20.83976"
+       id="path6"
+       sodipodi:nodetypes="ccc" />
   </g>
 </svg>
