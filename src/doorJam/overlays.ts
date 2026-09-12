@@ -2,6 +2,7 @@ import OBR, { buildBillboard, isImage, type Image, type Item, type ToolEvent } f
 import { EXTENSION_ID } from "../constants";
 import { getDoorState } from "../dynamicFog/adapter";
 import { linkNearbyDoorOrCreate } from "./linking";
+import { openDoorImagesPopover } from "./imagesPopover";
 import { readDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "./metadata";
 
 const OVERLAY_KEY = `${EXTENSION_ID}/door-overlay`;
@@ -151,7 +152,10 @@ export async function handleDoorOverlayDoubleClick(event: ToolEvent): Promise<bo
 
   const result = await linkNearbyDoorOrCreate(door, () => OBR.notification.show("No existing Dynamic Fog door found in range. Attempting to create new Dynamic Fog door.", "DEFAULT"));
   if (!result.ok) await OBR.notification.show(result.message, "ERROR");
-  else await OBR.notification.show(result.outcome === "linked-existing" ? "Door image linked to Dynamic Fog door." : "New Dynamic Fog door created. Door image linked.", "DEFAULT");
+  else {
+    await OBR.notification.show(result.outcome === "linked-existing" ? "Door image linked to Dynamic Fog door." : "New Dynamic Fog door created. Door image linked.", "DEFAULT");
+    if (result.needsOpenArtwork) await openDoorImagesPopover(door.id);
+  }
   return true;
 }
 

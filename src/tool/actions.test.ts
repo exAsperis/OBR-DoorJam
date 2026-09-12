@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   toggle: vi.fn(),
-  choose: vi.fn(),
+  openImages: vi.fn(),
   updateItems: vi.fn(),
   removeMetadata: vi.fn(),
   removeFogLink: vi.fn(),
@@ -25,7 +25,7 @@ vi.mock("@owlbear-rodeo/sdk", () => ({
 vi.mock("../doorJam/control", () => ({ toggleLinkedDoorState: mocks.toggle, doorStateErrorMessage: () => "error" }));
 vi.mock("../doorJam/linking", () => ({ linkNearbyDoorOrCreate: mocks.link }));
 vi.mock("../dynamicFog/adapter", () => ({ getDoorState: mocks.getDoorState }));
-vi.mock("../doorJam/artwork", () => ({ chooseDoorArtwork: mocks.choose }));
+vi.mock("../doorJam/imagesPopover", () => ({ openDoorImagesPopover: mocks.openImages }));
 vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata, removeFogDoorLink: mocks.removeFogLink, setDoorLocked: mocks.setLocked }));
 vi.mock("../doorJam/settings", () => ({ getDoorJamSettings: vi.fn().mockResolvedValue({ playersCanOperate: true }), setPlayersCanOperate: vi.fn() }));
 
@@ -47,24 +47,16 @@ describe("DoorJam tool modes", () => {
     expect(mocks.toggle).toHaveBeenCalledWith("door");
   });
 
-  it("links an image and reports a cancelled automatic artwork picker", async () => {
-    mocks.link.mockResolvedValue({ ok: true, outcome: "linked-existing", distance: 10, doorCount: 1, artworkRequested: true, artworkSet: false });
+  it("links an image and opens unified image setup when open artwork is missing", async () => {
+    mocks.link.mockResolvedValue({ ok: true, outcome: "linked-existing", distance: 10, doorCount: 1, needsOpenArtwork: true });
     await performDoorAction("link", image);
     expect(mocks.link).toHaveBeenCalledWith(image, expect.any(Function));
-    expect(mocks.notify).toHaveBeenCalledWith(expect.stringContaining("Door linked"), "DEFAULT");
+    expect(mocks.openImages).toHaveBeenCalledWith("door");
   });
 
-  it("sets closed artwork through its tool action", async () => {
-    mocks.readMetadata.mockReturnValue({ fogDoor: {} });
-    mocks.choose.mockResolvedValue(true);
-    await performDoorAction("setClosed", image);
-    expect(mocks.choose).toHaveBeenCalledWith("door", "closed");
-  });
-
-  it("sets open artwork on an unconfigured image", async () => {
-    mocks.choose.mockResolvedValue(true);
-    await performDoorAction("setOpen", image);
-    expect(mocks.choose).toHaveBeenCalledWith("door", "open");
+  it("opens unified image setup on an unconfigured image", async () => {
+    await performDoorAction("setImages", image);
+    expect(mocks.openImages).toHaveBeenCalledWith("door");
   });
 
   it("unlinks a fog-backed door without removing DoorJam metadata", async () => {
@@ -93,8 +85,7 @@ describe("DoorJam tool modes", () => {
     expect(DOOR_ACTION_SHORTCUTS).toEqual({
       operate: "O",
       lock: "L",
-      setOpen: "I",
-      setClosed: "C",
+      setImages: "I",
       link: "&",
       unlink: "?",
       remove: "R",

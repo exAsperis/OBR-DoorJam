@@ -2,8 +2,8 @@ import OBR, { isImage, type Image } from "@owlbear-rodeo/sdk";
 import { useEffect, useState, type CSSProperties } from "react";
 import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
 import { CONTEXT_MENU_HEIGHT_CHANNEL } from "../constants";
-import { chooseDoorArtwork } from "../doorJam/artwork";
 import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control";
+import { openDoorImagesPopover } from "../doorJam/imagesPopover";
 import { linkNearbyDoorOrCreate } from "../doorJam/linking";
 import { readDoorJamMetadata, removeDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "../doorJam/metadata";
 import { getDoorState } from "../dynamicFog/adapter";
@@ -70,11 +70,10 @@ export function ContextMenuPanel() {
       const result = await linkNearbyDoorOrCreate(image, () => notify("No existing Dynamic Fog door found in range. Attempting to create new Dynamic Fog door."));
       if (!result.ok) { await notify(result.message, "ERROR"); return; }
       await notify(result.outcome === "linked-existing" ? "Door image linked to Dynamic Fog door." : "New Dynamic Fog door created. Door image linked.");
+      if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
   });
-  const choose = (state: "open" | "closed") => run(async () => {
-    await chooseDoorArtwork(image.id, state);
-  });
+  const setImages = () => run(() => openDoorImagesPopover(image.id));
   const toggle = () => run(async () => {
     const result = await toggleLinkedDoorState(image.id);
     if (!result.ok) await notify(doorStateErrorMessage(result.reason), "ERROR");
@@ -115,11 +114,10 @@ export function ContextMenuPanel() {
     : { label: "Lock Door", icon: "/unlocked.svg" };
 
   return <main className="menu-panel" aria-label="DoorJam actions">
-    {!metadata ? <>{actionButton("setOpen", () => choose("open"))}{actionButton("link", link)}</> : <>
+    {!metadata ? <>{actionButton("setImages", setImages)}{actionButton("link", link)}</> : <>
       {actionButton("operate", toggle)}
       <button key="lock" style={{ "--menu-icon": `url(${lockDefinition.icon})` } as CSSProperties} disabled={busy} onClick={() => void lock()}>{lockDefinition.label}</button>
-      {actionButton("setOpen", () => choose("open"))}
-      {actionButton("setClosed", () => choose("closed"))}
+      {actionButton("setImages", setImages)}
       {!linked && actionButton("link", link)}
       {metadata.fogDoor ? actionButton("unlink", unlink) : actionButton("remove", remove)}
     </>}

@@ -1,0 +1,12 @@
+@import "../styles.css";
+
+body { min-width: 0; background: var(--obr-paper); }
+.images-panel { position: relative; display: grid; min-height: 230px; padding: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; background: var(--obr-paper); }
+.image-field { display: flex; min-width: 0; flex-direction: column; align-items: stretch; gap: 7px; }
+.image-field h2 { font-size: 14px; text-align: center; }
+.image-frame { display: flex; height: 128px; min-width: 0; align-items: center; justify-content: center; overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--soft); color: var(--obr-muted); }
+.image-frame img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.image-frame span { padding: 8px; text-align: center; }
+.image-field button { width: 100%; min-height: 34px; }
+.swap-button { position: absolute; z-index: 2; top: 100px; left: 50%; display: grid; width: 38px; height: 38px; padding: 0; place-items: center; transform: translate(-50%, -50%); border: 2px solid var(--obr-paper); border-radius: 50%; box-shadow: var(--shadow); font-size: 23px; line-height: 1; }
+.images-status { display: flex; min-height: 230px; padding: 20px; align-items: center; justify-content: center; background: var(--obr-paper); color: var(--obr-muted); text-align: center; }

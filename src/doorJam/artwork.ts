@@ -26,11 +26,15 @@ export async function chooseDoorArtwork(imageId: string, state: "open" | "closed
     if (!image || !isImage(image)) return;
     const metadata = readDoorJamMetadata(image);
     if (!metadata) {
-      if (state !== "open") return;
+      const artwork = { image: asset.image, grid: asset.grid };
+      if (state === "closed") {
+        applyArtwork(image, artwork);
+        return;
+      }
       writeDoorJamMetadata(image, {
         version: 2,
         closedImage: snapshotArtwork(image),
-        openImage: { image: asset.image, grid: asset.grid },
+        openImage: artwork,
         renderedState: "closed",
       });
       return;
@@ -43,7 +47,22 @@ export async function chooseDoorArtwork(imageId: string, state: "open" | "closed
   return true;
 }
 
-export const chooseOpenArtwork = (imageId: string) => chooseDoorArtwork(imageId, "open");
+export async function swapDoorArtwork(imageId: string): Promise<boolean> {
+  let swapped = false;
+  await OBR.scene.items.updateItems([imageId], (items) => {
+    const image = items[0];
+    if (!image || !isImage(image)) return;
+    const metadata = readDoorJamMetadata(image);
+    if (!metadata?.openImage || !metadata.closedImage) return;
+    const openImage = metadata.openImage;
+    metadata.openImage = metadata.closedImage;
+    metadata.closedImage = openImage;
+    applyArtwork(image, metadata.renderedState === "open" ? metadata.openImage : metadata.closedImage);
+    writeDoorJamMetadata(image, metadata);
+    swapped = true;
+  });
+  return swapped;
+}
 
 export async function renderDoorImage(imageId: string, open: boolean): Promise<"updated" | "missing-artwork" | "invalid-image"> {
   let result: "updated" | "missing-artwork" | "invalid-image" = "invalid-image";

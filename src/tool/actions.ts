@@ -1,8 +1,8 @@
 import OBR, { isImage, type Image, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "../constants";
 import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
-import { chooseDoorArtwork } from "../doorJam/artwork";
 import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control";
+import { openDoorImagesPopover } from "../doorJam/imagesPopover";
 import { linkNearbyDoorOrCreate } from "../doorJam/linking";
 import { getDoorState } from "../dynamicFog/adapter";
 import { readDoorJamMetadata, removeDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "../doorJam/metadata";
@@ -16,8 +16,7 @@ export const PLAYER_OPERATION_SHORTCUT = "X";
 export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
   operate: "O",
   lock: "L",
-  setOpen: "I",
-  setClosed: "C",
+  setImages: "I",
   link: "&",
   unlink: "?",
   remove: "R",
@@ -28,7 +27,7 @@ async function selectedDoorImage(target: Item | undefined, action: DoorActionNam
   if (!(await OBR.scene.isReady()) || !target || !isImage(target)) return null;
   if (role !== "GM" && action !== "operate") return null;
   const configured = Boolean(readDoorJamMetadata(target));
-  if (action !== "link" && action !== "setOpen" && !configured) return null;
+  if (action !== "link" && action !== "setImages" && !configured) return null;
   const metadata = readDoorJamMetadata(target);
   if (action === "link" && metadata?.fogDoor && (await getDoorState(metadata.fogDoor)).ok) return null;
   if (action === "unlink" && !metadata?.fogDoor) return null;
@@ -47,11 +46,8 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     try {
       const result = await linkNearbyDoorOrCreate(image, () => notify("No existing Dynamic Fog door found in range. Attempting to create new Dynamic Fog door."));
       if (!result.ok) { await notify(result.message, "ERROR"); return; }
-      if (result.artworkRequested && !result.artworkSet) {
-        await notify("Door linked. Choose Set Open Door Image when you are ready to finish setup.");
-        return;
-      }
       await notify(result.outcome === "linked-existing" ? "Door image linked to Dynamic Fog door." : "New Dynamic Fog door created. Door image linked.");
+      if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
     return;
   }
@@ -60,9 +56,8 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     if (!result.ok) await notify(doorStateErrorMessage(result.reason), "ERROR");
     return;
   }
-  if (action === "setOpen" || action === "setClosed") {
-    const state = action === "setOpen" ? "open" : "closed";
-    await chooseDoorArtwork(image.id, state);
+  if (action === "setImages") {
+    await openDoorImagesPopover(image.id);
     return;
   }
   if (action === "unlink") {
@@ -91,6 +86,7 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
 }
 
 const actions = Object.keys(DOOR_ACTIONS) as DoorActionName[];
+const legacyModeIds = [`${DOORJAM_TOOL_ID}/setOpen`, `${DOORJAM_TOOL_ID}/setClosed`];
 const targetCursor = (action: DoorActionName) => [{ cursor: "pointer", filter: { activeTools: [DOORJAM_TOOL_ID], activeModes: [modeId(action)] } }];
 
 const PLAYER_OPERATION_ACTION_ID = `${DOORJAM_TOOL_ID}/player-operation`;
@@ -117,7 +113,7 @@ async function registerPlayerOperationAction(): Promise<void> {
 
 export async function setupDoorJamTool(): Promise<() => void> {
   const role = await OBR.player.getRole();
-  await Promise.all(actions.map((action) => OBR.tool.removeMode(modeId(action))));
+  await Promise.all([...actions.map((action) => modeId(action)), ...legacyModeIds].map((id) => OBR.tool.removeMode(id)));
   await OBR.tool.removeAction(PLAYER_OPERATION_ACTION_ID);
   await OBR.tool.remove(DOORJAM_TOOL_ID);
   await OBR.tool.create({

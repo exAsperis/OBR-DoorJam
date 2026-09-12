@@ -9,7 +9,7 @@ vi.mock("@owlbear-rodeo/sdk", () => ({
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
 
-import { chooseDoorArtwork, chooseOpenArtwork } from "./artwork";
+import { chooseDoorArtwork, swapDoorArtwork } from "./artwork";
 
 const closed = { image: { url: "closed.png", mime: "image/png", width: 100, height: 200 }, grid: { dpi: 100, offset: { x: 0, y: 0 } } };
 const open = { image: { url: "open.png", mime: "image/png", width: 200, height: 100 }, grid: { dpi: 100, offset: { x: 0, y: 0 } } };
@@ -28,7 +28,7 @@ describe("open artwork selection", () => {
     const target = image();
     mocks.downloadImages.mockResolvedValue([open]);
     mocks.updateItems.mockImplementation(async (_ids, update) => update([target]));
-    expect(await chooseOpenArtwork(target.id)).toBe(true);
+    expect(await chooseDoorArtwork(target.id, "open")).toBe(true);
     expect(target.metadata[DOORJAM_METADATA_KEY]).toEqual({ version: 2, closedImage: closed, openImage: open, renderedState: "closed" });
     expect(target.image.url).toBe("closed.png");
   });
@@ -36,7 +36,7 @@ describe("open artwork selection", () => {
   it("leaves an ordinary image unconfigured when selection is cancelled", async () => {
     const target = image();
     mocks.downloadImages.mockResolvedValue([]);
-    expect(await chooseOpenArtwork(target.id)).toBe(false);
+    expect(await chooseDoorArtwork(target.id, "open")).toBe(false);
     expect(mocks.updateItems).not.toHaveBeenCalled();
     expect(target.metadata).toEqual({});
   });
@@ -74,5 +74,40 @@ describe("open artwork selection", () => {
     expect(target.image.url).toBe("closed.png");
     expect(target.scale).toEqual({ x: 2, y: 3 });
     expect((target.metadata[DOORJAM_METADATA_KEY] as { openImage: typeof replacement }).openImage).toEqual(replacement);
+  });
+
+  it("replaces an ordinary image selected as closed artwork without configuring a door", async () => {
+    const target = image();
+    const replacement = { image: { url: "new-closed.png", mime: "image/png", width: 400, height: 100 }, grid: { dpi: 100, offset: { x: 0, y: 0 } } };
+    mocks.downloadImages.mockResolvedValue([replacement]);
+    mocks.updateItems.mockImplementation(async (_ids, update) => update([target]));
+
+    expect(await chooseDoorArtwork(target.id, "closed")).toBe(true);
+    expect(target.image.url).toBe("new-closed.png");
+    expect(target.scale).toEqual({ x: 0.5, y: 6 });
+    expect(target.metadata).toEqual({});
+  });
+
+  it("swaps both artworks and immediately renders the replacement for the current state", async () => {
+    const target = configuredImage("closed");
+    mocks.updateItems.mockImplementation(async (_ids, update) => update([target]));
+
+    expect(await swapDoorArtwork(target.id)).toBe(true);
+    expect(target.image.url).toBe("open.png");
+    expect(target.metadata[DOORJAM_METADATA_KEY]).toEqual({
+      version: 2,
+      closedImage: open,
+      openImage: closed,
+      renderedState: "closed",
+    });
+  });
+
+  it("does not swap when either artwork is missing", async () => {
+    const target = image();
+    target.metadata[DOORJAM_METADATA_KEY] = { version: 2, closedImage: closed, renderedState: "closed" };
+    mocks.updateItems.mockImplementation(async (_ids, update) => update([target]));
+
+    expect(await swapDoorArtwork(target.id)).toBe(false);
+    expect(target.image.url).toBe("closed.png");
   });
 });
