@@ -11,6 +11,17 @@ import { handleDoorOverlayDoubleClick } from "../doorJam/overlays";
 
 export const DOORJAM_TOOL_ID = `${EXTENSION_ID}/tool`;
 export const modeId = (action: DoorActionName) => `${DOORJAM_TOOL_ID}/${action}`;
+export const DOORJAM_TOOL_SHORTCUT = "J";
+export const PLAYER_OPERATION_SHORTCUT = "X";
+export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
+  operate: "O",
+  lock: "L",
+  setOpen: "I",
+  setClosed: "C",
+  link: "&",
+  unlink: "?",
+  remove: "R",
+};
 
 async function selectedDoorImage(target: Item | undefined, action: DoorActionName): Promise<Image | null> {
   const role = await OBR.player.getRole();
@@ -94,6 +105,7 @@ async function registerPlayerOperationAction(): Promise<void> {
       filter: { activeTools: [DOORJAM_TOOL_ID], roles: ["GM"] },
     }],
     disabled: { roles: ["PLAYER"] },
+    shortcut: PLAYER_OPERATION_SHORTCUT,
     onClick: async () => {
       const current = (await getDoorJamSettings()).playersCanOperate;
       if (await setPlayersCanOperate(!current)) {
@@ -112,7 +124,7 @@ export async function setupDoorJamTool(): Promise<() => void> {
     id: DOORJAM_TOOL_ID,
     icons: [{ icon: "/icon.svg", label: "DoorJam", filter: { roles: ["GM", "PLAYER"] } }],
     defaultMode: modeId("operate"),
-    shortcut: "J",
+    shortcut: DOORJAM_TOOL_SHORTCUT,
   });
   for (const action of actions) {
     if (role !== "GM" && action !== "operate") continue;
@@ -121,6 +133,7 @@ export async function setupDoorJamTool(): Promise<() => void> {
       id: modeId(action),
       icons: [{ icon: definition.icon, label: definition.label, filter: { activeTools: [DOORJAM_TOOL_ID], roles: action === "operate" ? ["GM", "PLAYER"] : ["GM"] } }],
       disabled: action === "operate" ? undefined : { roles: ["PLAYER"] },
+      shortcut: DOOR_ACTION_SHORTCUTS[action],
       cursors: targetCursor(action),
       onToolClick: async (_context, event: ToolEvent) => { await performDoorAction(action, event.target); return false; },
       onToolDoubleClick: async (_context, event: ToolEvent) => await handleDoorOverlayDoubleClick(event) ? false : undefined,

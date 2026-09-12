@@ -29,7 +29,7 @@ vi.mock("../doorJam/artwork", () => ({ chooseDoorArtwork: mocks.choose }));
 vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata, removeFogDoorLink: mocks.removeFogLink, setDoorLocked: mocks.setLocked }));
 vi.mock("../doorJam/settings", () => ({ getDoorJamSettings: vi.fn().mockResolvedValue({ playersCanOperate: true }), setPlayersCanOperate: vi.fn() }));
 
-import { performDoorAction } from "./actions";
+import { DOOR_ACTION_SHORTCUTS, DOORJAM_TOOL_SHORTCUT, performDoorAction, PLAYER_OPERATION_SHORTCUT } from "./actions";
 
 const image = { id: "door", type: "IMAGE" } as Image;
 
@@ -87,5 +87,21 @@ describe("DoorJam tool modes", () => {
     mocks.readMetadata.mockReturnValue(metadata);
     await performDoorAction("lock", image);
     expect(mocks.setLocked).toHaveBeenCalledWith(image, metadata, true);
+  });
+
+  it("assigns the requested shortcuts without overloading a key", () => {
+    expect(DOOR_ACTION_SHORTCUTS).toEqual({
+      operate: "O",
+      lock: "L",
+      setOpen: "I",
+      setClosed: "C",
+      link: "&",
+      unlink: "?",
+      remove: "R",
+    });
+    expect(PLAYER_OPERATION_SHORTCUT).toBe("X");
+
+    const shortcuts = [DOORJAM_TOOL_SHORTCUT, PLAYER_OPERATION_SHORTCUT, ...Object.values(DOOR_ACTION_SHORTCUTS)];
+    expect(new Set(shortcuts).size).toBe(shortcuts.length);
   });
 });
