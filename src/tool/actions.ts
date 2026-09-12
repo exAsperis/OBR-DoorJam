@@ -51,7 +51,7 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
   }
   if (action === "setOpen" || action === "setClosed") {
     const state = action === "setOpen" ? "open" : "closed";
-    if (await chooseDoorArtwork(image.id, state)) await notify(`${state === "open" ? "Open" : "Closed"} door artwork saved.`);
+    await chooseDoorArtwork(image.id, state);
     return;
   }
   if (action === "unlink") {
@@ -73,7 +73,6 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
       const current = readDoorJamMetadata(item);
       if (current) setDoorLocked(item, current, current.locked !== true);
     });
-    await notify(metadata.locked ? "Door unlocked." : "Door locked.");
     return;
   }
   await OBR.scene.items.updateItems([image.id], (items) => { if (items[0]) removeDoorJamMetadata(items[0]); });
@@ -99,7 +98,6 @@ async function registerPlayerOperationAction(): Promise<void> {
       const current = (await getDoorJamSettings()).playersCanOperate;
       if (await setPlayersCanOperate(!current)) {
         await registerPlayerOperationAction();
-        await notify(!current ? "Players can operate unlocked doors." : "Player door operation disabled for this scene.");
       }
     },
   });

@@ -35,7 +35,9 @@ export async function chooseDoorArtwork(imageId: string, state: "open" | "closed
       });
       return;
     }
-    metadata[state === "open" ? "openImage" : "closedImage"] = { image: asset.image, grid: asset.grid };
+    const artwork = { image: asset.image, grid: asset.grid };
+    metadata[state === "open" ? "openImage" : "closedImage"] = artwork;
+    if (metadata.renderedState === state) applyArtwork(image, artwork);
     writeDoorJamMetadata(image, metadata);
   });
   return true;

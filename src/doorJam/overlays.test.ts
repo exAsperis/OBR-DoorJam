@@ -51,8 +51,17 @@ describe("door status overlay actions", () => {
   });
 
   it("maps glyphs to the door's actual lock and link states", () => {
-    expect(doorOverlayDefinitions(true, true).map(({ icon }) => icon)).toEqual(["/overlay-locked-billboard.png", "/overlay-unlinked-billboard.png"]);
-    expect(doorOverlayDefinitions(false, false).map(({ icon }) => icon)).toEqual(["/overlay-unlocked-billboard.png", "/overlay-linked-billboard.png"]);
+    expect(doorOverlayDefinitions(true, "linked").map(({ icon }) => icon)).toEqual(["/overlay-locked-billboard.png", "/overlay-unlinked-billboard.png"]);
+    expect(doorOverlayDefinitions(false, "unlinked").map(({ icon }) => icon)).toEqual(["/overlay-unlocked-billboard.png", "/overlay-linked-billboard.png"]);
+  });
+
+  it("uses an amber linked glyph when the saved Dynamic Fog reference is missing", () => {
+    const link = doorOverlayDefinitions(false, "missing")[1];
+    expect(link).toMatchObject({
+      active: false,
+      icon: "/overlay-linked-warning-billboard.png",
+      name: "Link Door",
+    });
   });
 
   it("resolves a link overlay from its screen-space half when Owlbear reports the underlying image", async () => {

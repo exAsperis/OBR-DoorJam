@@ -12,6 +12,7 @@ const CONTROL_HALF_WIDTH_PIXELS = 28;
 const CONTROL_HEIGHT_PIXELS = 32;
 
 type OverlayKind = "lock" | "link";
+export type LinkOverlayState = "unlinked" | "linked" | "missing";
 interface OverlayMetadata { doorId: string; kind: OverlayKind; active: boolean }
 
 function overlayMetadata(item: Item | undefined): OverlayMetadata | null {
@@ -48,10 +49,19 @@ function iconUrl(path: string): string {
   return new URL(path, window.location.href).href;
 }
 
-export function doorOverlayDefinitions(locked: boolean, linked: boolean) {
+export function doorOverlayDefinitions(locked: boolean, linkState: LinkOverlayState) {
   return [
     { kind: "lock" as const, active: locked, icon: locked ? "/overlay-locked-billboard.png" : "/overlay-unlocked-billboard.png", name: locked ? "Unlock Door" : "Lock Door" },
-    { kind: "link" as const, active: linked, icon: linked ? "/overlay-unlinked-billboard.png" : "/overlay-linked-billboard.png", name: linked ? "Unlink Door" : "Link Door" },
+    {
+      kind: "link" as const,
+      active: linkState === "linked",
+      icon: linkState === "linked"
+        ? "/overlay-unlinked-billboard.png"
+        : linkState === "missing"
+          ? "/overlay-linked-warning-billboard.png"
+          : "/overlay-linked-billboard.png",
+      name: linkState === "linked" ? "Unlink Door" : "Link Door",
+    },
   ];
 }
 
@@ -60,8 +70,12 @@ async function buildDoorOverlays(image: Image): Promise<Item[]> {
   if (!metadata) return [];
   const bounds = await OBR.scene.items.getItemBounds([image.id]);
   const sceneDpi = await OBR.scene.grid.getDpi();
-  const linked = Boolean(metadata.fogDoor && (await getDoorState(metadata.fogDoor)).ok);
-  const definitions = doorOverlayDefinitions(metadata.locked === true, linked);
+  const linkState: LinkOverlayState = !metadata.fogDoor
+    ? "unlinked"
+    : (await getDoorState(metadata.fogDoor)).ok
+      ? "linked"
+      : "missing";
+  const definitions = doorOverlayDefinitions(metadata.locked === true, linkState);
   const pill = buildBillboard(
     { url: iconUrl("/door-overlay-billboard.png"), mime: "image/png", width: PILL_WIDTH_PIXELS, height: PILL_HEIGHT_PIXELS },
     { dpi: sceneDpi, offset: { x: PILL_WIDTH_PIXELS / 2, y: PILL_HEIGHT_PIXELS / 2 } },
@@ -121,7 +135,6 @@ export async function handleDoorOverlayDoubleClick(event: ToolEvent): Promise<bo
       const current = readDoorJamMetadata(item);
       if (current) setDoorLocked(item, current, current.locked !== true);
     });
-    await OBR.notification.show(metadata.locked ? "Door unlocked." : "Door locked.", "DEFAULT");
     return true;
   }
 

@@ -73,7 +73,7 @@ export function ContextMenuPanel() {
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
   });
   const choose = (state: "open" | "closed") => run(async () => {
-    if (await chooseDoorArtwork(image.id, state)) await notify(`${state === "open" ? "Open" : "Closed"} door artwork saved.`);
+    await chooseDoorArtwork(image.id, state);
   });
   const toggle = () => run(async () => {
     const result = await toggleLinkedDoorState(image.id);
@@ -99,7 +99,6 @@ export function ContextMenuPanel() {
       const current = readDoorJamMetadata(item);
       if (current) setDoorLocked(item, current, current.locked !== true);
     });
-    await notify(metadata?.locked ? "Door unlocked." : "Door locked.");
   });
 
   const actionButton = (action: DoorActionName, onClick: () => Promise<void>, override?: { label: string; icon: string }) => {
