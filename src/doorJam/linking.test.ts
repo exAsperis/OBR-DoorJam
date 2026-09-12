@@ -1,7 +1,7 @@
 import type { Image } from "@owlbear-rodeo/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ choose: vi.fn(), read: vi.fn(), write: vi.fn(), nearest: vi.fn() }));
+const mocks = vi.hoisted(() => ({ choose: vi.fn(), read: vi.fn(), write: vi.fn(), nearest: vi.fn(), create: vi.fn() }));
 const image = { id: "door", type: "IMAGE", image: { url: "closed.png" }, grid: {} } as unknown as Image;
 
 vi.mock("@owlbear-rodeo/sdk", () => ({
@@ -12,11 +12,11 @@ vi.mock("@owlbear-rodeo/sdk", () => ({
   } } },
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
-vi.mock("../dynamicFog/adapter", () => ({ findNearestDoor: mocks.nearest }));
+vi.mock("../dynamicFog/adapter", () => ({ findNearestDoor: mocks.nearest, createDynamicFogDoor: mocks.create }));
 vi.mock("./artwork", () => ({ chooseOpenArtwork: mocks.choose, snapshotArtwork: vi.fn(() => ({ image: {}, grid: {} })) }));
 vi.mock("./metadata", () => ({ readDoorJamMetadata: mocks.read, writeDoorJamMetadata: mocks.write }));
 
-import { linkNearestDoorAndChooseArtwork } from "./linking";
+import { createAndLinkDoor, linkNearestDoorAndChooseArtwork } from "./linking";
 
 describe("linkNearestDoorAndChooseArtwork", () => {
   beforeEach(() => {
@@ -37,5 +37,14 @@ describe("linkNearestDoorAndChooseArtwork", () => {
     const result = await linkNearestDoorAndChooseArtwork(image);
     expect(mocks.choose).not.toHaveBeenCalled();
     expect(result).toMatchObject({ ok: true });
+  });
+
+  it("creates a fog door and links the image to its new index", async () => {
+    mocks.create.mockResolvedValue({ ok: true, ref: { fogItemId: "fog", doorIndex: 2 } });
+    mocks.read.mockReturnValue(null);
+    mocks.choose.mockResolvedValue(true);
+    const result = await createAndLinkDoor(image);
+    expect(mocks.write).toHaveBeenCalledWith(image, expect.objectContaining({ fogDoor: { fogItemId: "fog", doorIndex: 2 } }));
+    expect(result).toMatchObject({ ok: true, artworkRequested: true, artworkSet: true });
   });
 });

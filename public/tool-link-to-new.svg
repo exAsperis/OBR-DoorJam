@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 64 64"
+   version="1.1"
+   id="svg3"
+   sodipodi:docname="tool-link-to-new.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs3" />
+  <sodipodi:namedview
+     id="namedview3"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="18.234375"
+     inkscape:cx="31.972579"
+     inkscape:cy="32.274207"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
+     inkscape:window-x="1072"
+     inkscape:window-y="259"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg3" />
+  <path
+     d="M25 39l-5 5a10 10 0 01-14-14l9-9a10 10 0 0114 0"
+     fill="none"
+     stroke="#fff"
+     stroke-width="6"
+     stroke-linecap="round"
+     id="path1"
+     style="stroke:#000000;stroke-opacity:1" />
+  <path
+     d="M39 25l5-5a10 10 0 0114 14l-9 9a10 10 0 01-14 0"
+     fill="none"
+     stroke="#fff"
+     stroke-width="6"
+     stroke-linecap="round"
+     id="path2"
+     style="stroke:#000000;stroke-opacity:1" />
+  <path
+     d="M23 41l18-18"
+     stroke="#d97706"
+     stroke-width="7"
+     stroke-linecap="round"
+     id="path3"
+     style="stroke:#000000;stroke-opacity:1" />
+  <path
+     style="fill:none;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
+     d="m 32.850043,2.083976 v 9.871465"
+     id="path4" />
+  <use
+     x="0"
+     y="0"
+     xlink:href="#path4"
+     id="use4"
+     transform="translate(0,49.796058)" />
+  <use
+     x="0"
+     y="0"
+     xlink:href="#use4"
+     id="use5"
+     transform="rotate(-45,41.916563,30.24624)" />
+  <use
+     x="0"
+     y="0"
+     xlink:href="#use5"
+     id="use6"
+     transform="translate(-44.421594,-45.628106)" />
+  <use
+     x="0"
+     y="0"
+     xlink:href="#use6"
+     id="use7"
+     transform="rotate(90,32.41131,32.35647)" />
+  <use
+     x="0"
+     y="0"
+     xlink:href="#use7"
+     id="use8"
+     transform="translate(-45.079693,45.628106)" />
+</svg>

@@ -5,12 +5,12 @@ DoorJam links ordinary Owlbear Rodeo image items to doors created by the officia
 ## GM workflow
 
 1. Place closed-door artwork over an existing Dynamic Fog door.
-2. Press **J** to activate the DoorJam tool, choose **Link**, and click the image. DoorJam links the nearest Dynamic Fog door and opens the image picker for the open artwork.
+2. Press **J** to activate the DoorJam tool, choose **Link/Relink Dynamic Fog Door**, and click the image. DoorJam links the nearest Dynamic Fog door and opens the image picker for the open artwork. Alternatively, choose **Link to New Dynamic Fog Door** to create a closed door along the single fog edge intersecting the image and link it immediately.
 3. Switch to **Operate** and click a linked door image to open or close it with one click—even when the image is locked.
 
 The original context-menu link, relink, artwork, and open/close actions remain available as an alternative workflow.
 
-DoorJam automatically mirrors changes made through Dynamic Fog itself. Use **Relink Dynamic Fog Door** if the underlying fog item or door index changes, or **Unlink DoorJam Door** to remove only DoorJam metadata.
+DoorJam automatically mirrors changes made through Dynamic Fog itself. Use **Link/Relink Dynamic Fog Door** if the underlying fog item or door index changes, or **Unlink Door** to remove only DoorJam metadata.
 
 ## Development
 
@@ -21,6 +21,6 @@ pnpm dev
 
 Install `http://localhost:5173/manifest-local.json` in an Owlbear Rodeo development room. Run `pnpm build` for a production build.
 
-The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.5.0.json`).
+The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.6.0.json`).
 
 The private Dynamic Fog metadata key `rodeo.owlbear.dynamic-fog/doors` is isolated in `src/dynamicFog/adapter.ts`. Dynamic Fog does not expose a formal door API, so future representation changes should require updates only in that adapter and its geometry helper.

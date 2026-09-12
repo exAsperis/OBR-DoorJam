@@ -3,7 +3,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
 import { chooseDoorArtwork } from "../doorJam/artwork";
 import { doorStateErrorMessage, setLinkedDoorState } from "../doorJam/control";
-import { linkNearestDoorAndChooseArtwork } from "../doorJam/linking";
+import { createAndLinkDoor, linkNearestDoorAndChooseArtwork } from "../doorJam/linking";
 import { readDoorJamMetadata, removeDoorJamMetadata } from "../doorJam/metadata";
 import { applyOwlbearTheme } from "../theme";
 
@@ -45,6 +45,13 @@ export function ContextMenuPanel() {
       await notify(metadata ? "DoorJam link updated." : "Door linked.");
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
   });
+  const linkNew = () => run(async () => {
+    try {
+      const result = await createAndLinkDoor(image);
+      if (!result.ok) { await notify(result.message, "ERROR"); return; }
+      await notify("Dynamic Fog door created and linked.");
+    } catch { await notify("DoorJam could not create a Dynamic Fog door.", "ERROR"); }
+  });
   const choose = (state: "open" | "closed") => run(async () => {
     if (await chooseDoorArtwork(image.id, state)) await notify(`${state === "open" ? "Open" : "Closed"} door artwork saved.`);
   });
@@ -63,11 +70,12 @@ export function ContextMenuPanel() {
   };
 
   return <main className="menu-panel" aria-label="DoorJam actions">
-    {!metadata ? actionButton("link", link) : <>
+    {!metadata ? <>{actionButton("link", link)}{actionButton("linkNew", linkNew)}</> : <>
       {actionButton("operate", toggle)}
       {actionButton("setOpen", () => choose("open"))}
       {actionButton("setClosed", () => choose("closed"))}
       {actionButton("link", link)}
+      {actionButton("linkNew", linkNew)}
       {actionButton("unlink", unlink)}
     </>}
   </main>;

@@ -1,6 +1,6 @@
 import OBR, { isImage, type Image } from "@owlbear-rodeo/sdk";
 import { LINK_DISTANCE_THRESHOLD } from "../constants";
-import { findNearestDoor } from "../dynamicFog/adapter";
+import { createDynamicFogDoor, findNearestDoor } from "../dynamicFog/adapter";
 import { chooseOpenArtwork, snapshotArtwork } from "./artwork";
 import { readDoorJamMetadata, writeDoorJamMetadata } from "./metadata";
 
@@ -35,4 +35,31 @@ export async function linkNearestDoorAndChooseArtwork(image: Image): Promise<Lin
   if (!metadata || metadata.openImage) return result;
   const artworkSet = await chooseOpenArtwork(image.id);
   return { ...result, artworkRequested: true, artworkSet };
+}
+
+export async function createAndLinkDoor(image: Image): Promise<LinkAndArtworkResult> {
+  const created = await createDynamicFogDoor(await OBR.scene.items.getItemBounds([image.id]));
+  if (!created.ok) {
+    const messages = {
+      "no-intersection": "The selected image does not intersect a supported Dynamic Fog edge.",
+      "ambiguous-intersection": "The selected image intersects more than one fog edge. Move or resize it so only one edge crosses it.",
+      "invalid-format": "The intersecting Dynamic Fog item has an unsupported door format.",
+      "missing-item": "The intersecting Dynamic Fog item is no longer available.",
+    } as const;
+    return { ok: false, message: messages[created.reason] };
+  }
+  await OBR.scene.items.updateItems([image.id], (items) => {
+    const target = items[0];
+    if (!target || !isImage(target)) return;
+    const existing = readDoorJamMetadata(target);
+    writeDoorJamMetadata(target, {
+      version: 1,
+      fogDoor: created.ref,
+      closedImage: existing?.closedImage ?? snapshotArtwork(target),
+      openImage: existing?.openImage,
+      renderedState: "closed",
+    });
+  });
+  const artworkSet = readDoorJamMetadata(image)?.openImage ? undefined : await chooseOpenArtwork(image.id);
+  return { ok: true, distance: 0, doorCount: 1, artworkRequested: artworkSet !== undefined, artworkSet };
 }

@@ -6,6 +6,7 @@ import {
   isPath,
   isShape,
   type Curve,
+  type BoundingBox,
   type Item,
   type PathCommand,
   type Vector2,
@@ -132,7 +133,7 @@ function curveContour(curve: Curve): Vector2[] {
   return isClosed ? closed(result.slice(0, -1)) : result;
 }
 
-function drawingContours(item: Item): Vector2[][] {
+export function drawingContours(item: Item): Vector2[][] {
   if (isPath(item)) return pathContours(item.commands);
   if (isLine(item)) return [[item.startPosition, item.endPosition]];
   if (isShape(item)) {
@@ -141,6 +142,54 @@ function drawingContours(item: Item): Vector2[][] {
   }
   if (isCurve(item)) return [curveContour(item)];
   return [];
+}
+
+function clipSegmentToBounds(a: Vector2, b: Vector2, bounds: BoundingBox): [number, number] | null {
+  let start = 0;
+  let end = 1;
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  for (const [p, q] of [[-dx, a.x - bounds.min.x], [dx, bounds.max.x - a.x], [-dy, a.y - bounds.min.y], [dy, bounds.max.y - a.y]]) {
+    if (Math.abs(p) < 1e-9) { if (q < 0) return null; continue; }
+    const ratio = q / p;
+    if (p < 0) start = Math.max(start, ratio);
+    else end = Math.min(end, ratio);
+    if (start > end) return null;
+  }
+  return [start, end];
+}
+
+export interface ContourSpan { start: ContourMarker; end: ContourMarker; worldLength: number }
+
+export function contourSpansWithinBounds(item: Item, bounds: BoundingBox): ContourSpan[] {
+  const spans: ContourSpan[] = [];
+  drawingContours(item).forEach((points, index) => {
+    let distance = 0;
+    let active: ContourSpan | null = null;
+    for (let pointIndex = 1; pointIndex < points.length; pointIndex += 1) {
+      const localStart = points[pointIndex - 1];
+      const localEnd = points[pointIndex];
+      const localLength = Math.hypot(localEnd.x - localStart.x, localEnd.y - localStart.y);
+      const worldStart = toWorld(item, localStart);
+      const worldEnd = toWorld(item, localEnd);
+      const clipped = clipSegmentToBounds(worldStart, worldEnd, bounds);
+      if (clipped && localLength > 0) {
+        const [segmentStart, segmentEnd] = clipped;
+        const startDistance = distance + localLength * segmentStart;
+        const endDistance = distance + localLength * segmentEnd;
+        const worldLength = Math.hypot(worldEnd.x - worldStart.x, worldEnd.y - worldStart.y) * (segmentEnd - segmentStart);
+        if (active && Math.abs(active.end.distance - startDistance) < 1e-5) {
+          active.end.distance = endDistance;
+          active.worldLength += worldLength;
+        } else {
+          active = { start: { index, distance: startDistance }, end: { index, distance: endDistance }, worldLength };
+          spans.push(active);
+        }
+      } else active = null;
+      distance += localLength;
+    }
+  });
+  return spans.filter((span) => span.worldLength > 1);
 }
 
 function atDistance(points: Vector2[], distance: number): Vector2 | null {

@@ -1,6 +1,6 @@
 import { Command, type Item, type Path, type Shape } from "@owlbear-rodeo/sdk";
 import { describe, expect, it } from "vitest";
-import { DYNAMIC_FOG_DOORS_KEY, enumerateDoors, lookupDoor, parseDynamicFogDoors } from "./adapter";
+import { DYNAMIC_FOG_DOORS_KEY, enumerateDoors, findDoorCandidates, lookupDoor, parseDynamicFogDoors } from "./adapter";
 
 function fogPath(metadataValue: unknown): Path {
   return {
@@ -45,5 +45,16 @@ describe("Dynamic Fog adapter", () => {
     const items: Item[] = [fogPath([])];
     expect(lookupDoor(items, { fogItemId: "missing", doorIndex: 0 })).toEqual({ ok: false, reason: "missing-item" });
     expect(lookupDoor(items, { fogItemId: "fog-1", doorIndex: 2 })).toEqual({ ok: false, reason: "missing-door" });
+  });
+
+  it("finds the contour span crossing a selected item's bounds", () => {
+    const candidates = findDoorCandidates([fogPath([])], {
+      min: { x: 120, y: 40 }, max: { x: 160, y: 60 }, width: 40, height: 20, center: { x: 140, y: 50 },
+    });
+    expect(candidates).toEqual([{
+      itemId: "fog-1",
+      start: { index: 0, distance: 20 },
+      end: { index: 0, distance: 60 },
+    }]);
   });
 });

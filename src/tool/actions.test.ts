@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   updateItems: vi.fn(),
   removeMetadata: vi.fn(),
   link: vi.fn(),
+  linkNew: vi.fn(),
   readMetadata: vi.fn(),
   notify: vi.fn(),
 }));
@@ -20,7 +21,7 @@ vi.mock("@owlbear-rodeo/sdk", () => ({
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
 vi.mock("../doorJam/control", () => ({ toggleLinkedDoorState: mocks.toggle, doorStateErrorMessage: () => "error" }));
-vi.mock("../doorJam/linking", () => ({ linkNearestDoorAndChooseArtwork: mocks.link }));
+vi.mock("../doorJam/linking", () => ({ linkNearestDoorAndChooseArtwork: mocks.link, createAndLinkDoor: mocks.linkNew }));
 vi.mock("../doorJam/artwork", () => ({ chooseDoorArtwork: mocks.choose }));
 vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata }));
 
@@ -53,5 +54,11 @@ describe("DoorJam tool modes", () => {
     mocks.choose.mockResolvedValue(true);
     await performDoorAction("setClosed", image);
     expect(mocks.choose).toHaveBeenCalledWith("door", "closed");
+  });
+
+  it("creates and links a new door from an unconfigured image", async () => {
+    mocks.linkNew.mockResolvedValue({ ok: true, distance: 0, doorCount: 1 });
+    await performDoorAction("linkNew", image);
+    expect(mocks.linkNew).toHaveBeenCalledWith(image);
   });
 });

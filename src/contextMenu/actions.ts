@@ -8,7 +8,7 @@ export async function setupContextMenu(): Promise<() => void> {
   await OBR.contextMenu.create({
     id: `${EXTENSION_ID}/context-menu`,
     icons: [{ icon, label: "DoorJam", filter: imageFilter }],
-    embed: { url: "/context-menu.html", height: 216 },
+    embed: { url: "/context-menu.html", height: 256 },
   });
   return () => { void OBR.contextMenu.remove(`${EXTENSION_ID}/context-menu`); };
 }

@@ -3,7 +3,7 @@ import { EXTENSION_ID } from "../constants";
 import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
 import { chooseDoorArtwork } from "../doorJam/artwork";
 import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control";
-import { linkNearestDoorAndChooseArtwork } from "../doorJam/linking";
+import { createAndLinkDoor, linkNearestDoorAndChooseArtwork } from "../doorJam/linking";
 import { readDoorJamMetadata, removeDoorJamMetadata } from "../doorJam/metadata";
 
 export const DOORJAM_TOOL_ID = `${EXTENSION_ID}/tool`;
@@ -12,7 +12,7 @@ export const modeId = (action: DoorActionName) => `${DOORJAM_TOOL_ID}/${action}`
 async function selectedDoorImage(target: Item | undefined, action: DoorActionName): Promise<Image | null> {
   if (await OBR.player.getRole() !== "GM" || !(await OBR.scene.isReady()) || !target || !isImage(target)) return null;
   const configured = Boolean(readDoorJamMetadata(target));
-  if (action !== "link" && !configured) return null;
+  if (action !== "link" && action !== "linkNew" && !configured) return null;
   return target;
 }
 
@@ -23,16 +23,16 @@ async function notify(message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT")
 export async function performDoorAction(action: DoorActionName, target: Item | undefined): Promise<void> {
   const image = await selectedDoorImage(target, action);
   if (!image) return;
-  if (action === "link") {
+  if (action === "link" || action === "linkNew") {
     const relinking = Boolean(readDoorJamMetadata(image));
     try {
-      const result = await linkNearestDoorAndChooseArtwork(image);
+      const result = action === "linkNew" ? await createAndLinkDoor(image) : await linkNearestDoorAndChooseArtwork(image);
       if (!result.ok) { await notify(result.message, "ERROR"); return; }
       if (result.artworkRequested && !result.artworkSet) {
         await notify("Door linked. Choose Set Open Door Image when you are ready to finish setup.");
         return;
       }
-      await notify(relinking ? "DoorJam link updated." : `Door linked (${Math.round(result.distance)}px away).`);
+      await notify(action === "linkNew" ? "Dynamic Fog door created and linked." : relinking ? "DoorJam link updated." : `Door linked (${Math.round(result.distance)}px away).`);
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
     return;
   }

@@ -1,5 +1,5 @@
-import OBR, { type Item, type Vector2 } from "@owlbear-rodeo/sdk";
-import { doorMidpoint } from "./geometry";
+import OBR, { type BoundingBox, type Item, type Vector2 } from "@owlbear-rodeo/sdk";
+import { contourSpansWithinBounds, doorMidpoint } from "./geometry";
 import type { DoorLookupResult, DynamicFogDoor, DynamicFogDoorRef, LocatedDynamicFogDoor } from "./types";
 
 export const DYNAMIC_FOG_DOORS_KEY = "rodeo.owlbear.dynamic-fog/doors";
@@ -80,6 +80,37 @@ export async function setDoorState(ref: DynamicFogDoorRef, open: boolean): Promi
     if (!door) { result = { ok: false, reason: "missing-door" }; return; }
     door.open = open;
     result = { ok: true, door };
+  });
+  return result;
+}
+
+export type CreateDoorResult =
+  | { ok: true; ref: DynamicFogDoorRef }
+  | { ok: false; reason: "no-intersection" | "ambiguous-intersection" | "invalid-format" | "missing-item" };
+
+export function findDoorCandidates(items: Item[], bounds: BoundingBox) {
+  return items.flatMap((item) => item.layer === "FOG"
+    ? contourSpansWithinBounds(item, bounds).map((span) => ({ itemId: item.id, start: span.start, end: span.end }))
+    : []);
+}
+
+export async function createDynamicFogDoor(bounds: BoundingBox): Promise<CreateDoorResult> {
+  const fogItems = await OBR.scene.items.getItems((item) => item.layer === "FOG");
+  const candidates = findDoorCandidates(fogItems, bounds);
+  if (candidates.length === 0) return { ok: false, reason: "no-intersection" };
+  if (candidates.length !== 1) return { ok: false, reason: "ambiguous-intersection" };
+  const candidate = candidates[0];
+  let result: CreateDoorResult = { ok: false, reason: "missing-item" };
+  await OBR.scene.items.updateItems([candidate.itemId], (items) => {
+    const item = items[0];
+    if (!item) return;
+    const current = item.metadata[DYNAMIC_FOG_DOORS_KEY];
+    const doors = current === undefined ? [] : parseDynamicFogDoors(current);
+    if (!doors) { result = { ok: false, reason: "invalid-format" }; return; }
+    const doorIndex = doors.length;
+    doors.push({ open: false, start: candidate.start, end: candidate.end });
+    item.metadata[DYNAMIC_FOG_DOORS_KEY] = doors;
+    result = { ok: true, ref: { fogItemId: item.id, doorIndex } };
   });
   return result;
 }
