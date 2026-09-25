@@ -86,9 +86,9 @@ describe("DoorJam tool modes", () => {
       operate: "O",
       lock: "L",
       setImages: "I",
-      link: "&",
-      linkSmoke: "S",
-      unlink: "?",
+      link: "Y",
+      linkSmoke: "K",
+      unlink: "B",
       remove: "R",
     });
     expect(PLAYER_OPERATION_SHORTCUT).toBe("X");
