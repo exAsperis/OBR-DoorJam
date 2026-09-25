@@ -159,7 +159,12 @@ function clipSegmentToBounds(a: Vector2, b: Vector2, bounds: BoundingBox): [numb
   return [start, end];
 }
 
-export interface ContourSpan { start: ContourMarker; end: ContourMarker; worldLength: number }
+export interface ContourSpan {
+  start: ContourMarker;
+  end: ContourMarker;
+  worldLength: number;
+  worldPoints: Vector2[];
+}
 
 export function contourSpansWithinBounds(item: Item, bounds: BoundingBox): ContourSpan[] {
   const spans: ContourSpan[] = [];
@@ -178,11 +183,19 @@ export function contourSpansWithinBounds(item: Item, bounds: BoundingBox): Conto
         const startDistance = distance + localLength * segmentStart;
         const endDistance = distance + localLength * segmentEnd;
         const worldLength = Math.hypot(worldEnd.x - worldStart.x, worldEnd.y - worldStart.y) * (segmentEnd - segmentStart);
+        const clippedWorldStart = lerp(worldStart, worldEnd, segmentStart);
+        const clippedWorldEnd = lerp(worldStart, worldEnd, segmentEnd);
         if (active && Math.abs(active.end.distance - startDistance) < 1e-5) {
           active.end.distance = endDistance;
           active.worldLength += worldLength;
+          active.worldPoints.push(clippedWorldStart, clippedWorldEnd);
         } else {
-          active = { start: { index, distance: startDistance }, end: { index, distance: endDistance }, worldLength };
+          active = {
+            start: { index, distance: startDistance },
+            end: { index, distance: endDistance },
+            worldLength,
+            worldPoints: [clippedWorldStart, clippedWorldEnd],
+          };
           spans.push(active);
         }
       } else active = null;
@@ -190,6 +203,60 @@ export function contourSpansWithinBounds(item: Item, bounds: BoundingBox): Conto
     }
   });
   return spans.filter((span) => span.worldLength > 1);
+}
+
+/** Numerical tolerance for coincident boundaries, not the doorway cutting buffer. */
+const COINCIDENT_BOUNDARY_EPSILON = 1e-3;
+
+function distanceSquared(a: Vector2, b: Vector2): number {
+  const dx = a.x - b.x;
+  const dy = a.y - b.y;
+  return dx * dx + dy * dy;
+}
+
+function pointSegmentDistanceSquared(point: Vector2, a: Vector2, b: Vector2): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSquared = dx * dx + dy * dy;
+  if (lengthSquared === 0) return distanceSquared(point, a);
+  const projection = ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSquared;
+  const t = Math.max(0, Math.min(1, projection));
+  return distanceSquared(point, { x: a.x + t * dx, y: a.y + t * dy });
+}
+
+function pointPolylineDistanceSquared(point: Vector2, polyline: Vector2[]): number {
+  let nearest = Infinity;
+  for (let i = 1; i < polyline.length; i += 1) {
+    nearest = Math.min(nearest, pointSegmentDistanceSquared(point, polyline[i - 1], polyline[i]));
+  }
+  return nearest;
+}
+
+function followsPolyline(source: Vector2[], reference: Vector2[], toleranceSquared: number): boolean {
+  for (let i = 1; i < source.length; i += 1) {
+    const a = source[i - 1];
+    const b = source[i];
+    for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+      if (pointPolylineDistanceSquared(lerp(a, b, t), reference) > toleranceSquared) return false;
+    }
+  }
+  return true;
+}
+
+/** Determine whether two clipped fog boundaries describe the same doorway. */
+export function areCoincidentDoorSpans(a: Vector2[], b: Vector2[]): boolean {
+  if (a.length < 2 || b.length < 2) return false;
+  const toleranceSquared = COINCIDENT_BOUNDARY_EPSILON * COINCIDENT_BOUNDARY_EPSILON;
+  const aStart = a[0];
+  const aEnd = a[a.length - 1];
+  const bStart = b[0];
+  const bEnd = b[b.length - 1];
+  const sameDirection = distanceSquared(aStart, bStart) <= toleranceSquared
+    && distanceSquared(aEnd, bEnd) <= toleranceSquared;
+  const oppositeDirection = distanceSquared(aStart, bEnd) <= toleranceSquared
+    && distanceSquared(aEnd, bStart) <= toleranceSquared;
+  if (!sameDirection && !oppositeDirection) return false;
+  return followsPolyline(a, b, toleranceSquared) && followsPolyline(b, a, toleranceSquared);
 }
 
 function atDistance(points: Vector2[], distance: number): Vector2 | null {

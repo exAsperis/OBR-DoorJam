@@ -1,6 +1,6 @@
 import OBR, { type BoundingBox, type Item, type Vector2 } from "@owlbear-rodeo/sdk";
-import { contourSpansWithinBounds, doorMidpoint } from "./geometry";
-import type { DoorLookupResult, DynamicFogDoor, DynamicFogDoorRef, LocatedDynamicFogDoor } from "./types";
+import { areCoincidentDoorSpans, contourSpansWithinBounds, doorMidpoint } from "./geometry";
+import type { ContourMarker, DoorLookupResult, DynamicFogDoor, DynamicFogDoorRef, LocatedDynamicFogDoor } from "./types";
 
 export const DYNAMIC_FOG_DOORS_KEY = "rodeo.owlbear.dynamic-fog/doors";
 
@@ -88,18 +88,44 @@ export type CreateDoorResult =
   | { ok: true; ref: DynamicFogDoorRef }
   | { ok: false; reason: "no-intersection" | "ambiguous-intersection" | "invalid-format" | "missing-item" };
 
-export function findDoorCandidates(items: Item[], bounds: BoundingBox) {
+function findGeometricDoorCandidates(items: Item[], bounds: BoundingBox) {
   return items.flatMap((item) => item.layer === "FOG"
-    ? contourSpansWithinBounds(item, bounds).map((span) => ({ itemId: item.id, start: span.start, end: span.end }))
+    ? contourSpansWithinBounds(item, bounds).map((span) => ({
+      itemId: item.id, start: span.start, end: span.end, worldPoints: span.worldPoints,
+    }))
     : []);
+}
+
+export function findDoorCandidates(items: Item[], bounds: BoundingBox) {
+  return findGeometricDoorCandidates(items, bounds).map(({ itemId, start, end }) => ({ itemId, start, end }));
+}
+
+export function selectDoorCandidate(items: Item[], bounds: BoundingBox):
+  | { ok: true; candidate: { itemId: string; start: ContourMarker; end: ContourMarker } }
+  | { ok: false; reason: "no-intersection" | "ambiguous-intersection" } {
+  const candidates = findGeometricDoorCandidates(items, bounds);
+  if (candidates.length === 0) return { ok: false, reason: "no-intersection" };
+  if (candidates.length === 1) return { ok: true, candidate: candidates[0] };
+  for (let i = 0; i < candidates.length; i += 1) {
+    for (let j = i + 1; j < candidates.length; j += 1) {
+      if (!areCoincidentDoorSpans(candidates[i].worldPoints, candidates[j].worldPoints)) {
+        return { ok: false, reason: "ambiguous-intersection" };
+      }
+    }
+  }
+  const sorted = [...candidates].sort((a, b) => {
+    if (a.itemId !== b.itemId) return a.itemId < b.itemId ? -1 : 1;
+    if (a.start.index !== b.start.index) return a.start.index - b.start.index;
+    return a.start.distance - b.start.distance;
+  });
+  return { ok: true, candidate: sorted[0] };
 }
 
 export async function createDynamicFogDoor(bounds: BoundingBox): Promise<CreateDoorResult> {
   const fogItems = await OBR.scene.items.getItems((item) => item.layer === "FOG");
-  const candidates = findDoorCandidates(fogItems, bounds);
-  if (candidates.length === 0) return { ok: false, reason: "no-intersection" };
-  if (candidates.length !== 1) return { ok: false, reason: "ambiguous-intersection" };
-  const candidate = candidates[0];
+  const selection = selectDoorCandidate(fogItems, bounds);
+  if (!selection.ok) return selection;
+  const candidate = selection.candidate;
   let result: CreateDoorResult = { ok: false, reason: "missing-item" };
   await OBR.scene.items.updateItems([candidate.itemId], (items) => {
     const item = items[0];
