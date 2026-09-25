@@ -29,7 +29,7 @@ describe("open artwork selection", () => {
     mocks.downloadImages.mockResolvedValue([open]);
     mocks.updateItems.mockImplementation(async (_ids, update) => update([target]));
     expect(await chooseDoorArtwork(target.id, "open")).toBe(true);
-    expect(target.metadata[DOORJAM_METADATA_KEY]).toEqual({ version: 2, closedImage: closed, openImage: open, renderedState: "closed" });
+    expect(target.metadata[DOORJAM_METADATA_KEY]).toEqual({ version: 3, closedImage: closed, openImage: open, renderedState: "closed" });
     expect(target.image.url).toBe("closed.png");
   });
 
@@ -95,7 +95,8 @@ describe("open artwork selection", () => {
     expect(await swapDoorArtwork(target.id)).toBe(true);
     expect(target.image.url).toBe("open.png");
     expect(target.metadata[DOORJAM_METADATA_KEY]).toEqual({
-      version: 2,
+      version: 3,
+      fogDoor: undefined,
       closedImage: open,
       openImage: closed,
       renderedState: "closed",

@@ -1,6 +1,6 @@
 import OBR, { buildBillboard, isImage, type Image, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "../constants";
-import { getDoorState } from "../dynamicFog/adapter";
+import { getProviderDoorState, providerName } from "./providers";
 import { linkNearbyDoorOrCreate } from "./linking";
 import { openDoorImagesPopover } from "./imagesPopover";
 import { readDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "./metadata";
@@ -73,7 +73,7 @@ async function buildDoorOverlays(image: Image): Promise<Item[]> {
   const sceneDpi = await OBR.scene.grid.getDpi();
   const linkState: LinkOverlayState = !metadata.fogDoor
     ? "unlinked"
-    : (await getDoorState(metadata.fogDoor)).ok
+    : (await getProviderDoorState(metadata.fogDoor)).ok
       ? "linked"
       : "missing";
   const definitions = doorOverlayDefinitions(metadata.locked === true, linkState);
@@ -139,14 +139,14 @@ export async function handleDoorOverlayDoubleClick(event: ToolEvent): Promise<bo
     return true;
   }
 
-  if (metadata.fogDoor && (await getDoorState(metadata.fogDoor)).ok) {
+  if (metadata.fogDoor && (await getProviderDoorState(metadata.fogDoor)).ok) {
     await OBR.scene.items.updateItems([door.id], (items) => {
       const item = items[0];
       if (!item) return;
       const current = readDoorJamMetadata(item);
       if (current) removeFogDoorLink(item, current);
     });
-    await OBR.notification.show("Dynamic Fog link removed. DoorJam artwork was preserved.", "DEFAULT");
+    await OBR.notification.show(`${providerName(metadata.fogDoor)} link removed. DoorJam artwork was preserved.`, "DEFAULT");
     return true;
   }
 

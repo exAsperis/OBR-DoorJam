@@ -40,7 +40,7 @@ describe("DoorJam linking", () => {
     mocks.create.mockResolvedValue({ ok: true, ref: { fogItemId: "fog", doorIndex: 2 } });
     mocks.read.mockReturnValue(null);
     const result = await createAndLinkDoor(image);
-    expect(mocks.write).toHaveBeenCalledWith(image, expect.objectContaining({ fogDoor: { fogItemId: "fog", doorIndex: 2 } }));
+    expect(mocks.write).toHaveBeenCalledWith(image, expect.objectContaining({ fogDoor: { provider: "dynamic-fog", fogItemId: "fog", doorIndex: 2 } }));
     expect(result).toMatchObject({ ok: true, outcome: "created-new", needsOpenArtwork: true });
   });
 

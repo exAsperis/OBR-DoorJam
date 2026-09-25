@@ -4,7 +4,7 @@ import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
 import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control";
 import { openDoorImagesPopover } from "../doorJam/imagesPopover";
 import { linkNearbyDoorOrCreate } from "../doorJam/linking";
-import { getDoorState } from "../dynamicFog/adapter";
+import { providerName } from "../doorJam/providers";
 import { readDoorJamMetadata, removeDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "../doorJam/metadata";
 import { getDoorJamSettings, setPlayersCanOperate } from "../doorJam/settings";
 import { handleDoorOverlayDoubleClick } from "../doorJam/overlays";
@@ -18,6 +18,7 @@ export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
   lock: "L",
   setImages: "I",
   link: "&",
+  linkSmoke: "S",
   unlink: "?",
   remove: "R",
 };
@@ -27,9 +28,8 @@ async function selectedDoorImage(target: Item | undefined, action: DoorActionNam
   if (!(await OBR.scene.isReady()) || !target || !isImage(target)) return null;
   if (role !== "GM" && action !== "operate") return null;
   const configured = Boolean(readDoorJamMetadata(target));
-  if (action !== "link" && action !== "setImages" && !configured) return null;
+  if (action !== "link" && action !== "linkSmoke" && action !== "setImages" && !configured) return null;
   const metadata = readDoorJamMetadata(target);
-  if (action === "link" && metadata?.fogDoor && (await getDoorState(metadata.fogDoor)).ok) return null;
   if (action === "unlink" && !metadata?.fogDoor) return null;
   if (action === "remove" && (!metadata || metadata.fogDoor)) return null;
   return target;
@@ -42,11 +42,12 @@ async function notify(message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT")
 export async function performDoorAction(action: DoorActionName, target: Item | undefined): Promise<void> {
   const image = await selectedDoorImage(target, action);
   if (!image) return;
-  if (action === "link") {
+  if (action === "link" || action === "linkSmoke") {
+    const smoke = action === "linkSmoke";
     try {
-      const result = await linkNearbyDoorOrCreate(image, () => notify("No existing Dynamic Fog door found in range. Attempting to create new Dynamic Fog door."));
+      const result = await linkNearbyDoorOrCreate(image, () => notify(`No existing ${smoke ? "Smoke & Spectre" : "Dynamic Fog"} door found in range. Attempting safe creation.`), smoke ? "smoke" : "dynamic-fog");
       if (!result.ok) { await notify(result.message, "ERROR"); return; }
-      await notify(result.outcome === "linked-existing" ? "Door image linked to Dynamic Fog door." : "New Dynamic Fog door created. Door image linked.");
+      await notify(result.outcome === "linked-existing" ? `Door image linked to ${smoke ? "Smoke & Spectre" : "Dynamic Fog"}.` : `New ${smoke ? "Smoke & Spectre" : "Dynamic Fog"} door created and linked.`);
       if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
     return;
@@ -61,13 +62,14 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     return;
   }
   if (action === "unlink") {
+    const linkedMetadata = readDoorJamMetadata(image);
     await OBR.scene.items.updateItems([image.id], (items) => {
       const item = items[0];
       if (!item) return;
       const metadata = readDoorJamMetadata(item);
       if (metadata) removeFogDoorLink(item, metadata);
     });
-    await notify("Dynamic Fog link removed. DoorJam artwork was preserved.");
+    await notify(`${linkedMetadata?.fogDoor ? providerName(linkedMetadata.fogDoor) : "Fog"} link removed. DoorJam artwork was preserved.`);
     return;
   }
   if (action === "lock") {

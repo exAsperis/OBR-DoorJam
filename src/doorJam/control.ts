@@ -1,6 +1,6 @@
 import OBR, { isImage } from "@owlbear-rodeo/sdk";
 import { DOORJAM_OPERATE_CHANNEL } from "../constants";
-import { getDoorState, setDoorState } from "../dynamicFog/adapter";
+import { getProviderDoorState, setProviderDoorState } from "./providers";
 import { renderDoorImage } from "./artwork";
 import { readDoorJamMetadata } from "./metadata";
 import { getDoorJamSettings } from "./settings";
@@ -27,8 +27,11 @@ async function operateLocally(imageId: string, open: boolean, enforcePlayerPolic
   }
   if (open && !metadata.openImage) return { ok: false, reason: "missing-open-artwork" };
   if (metadata.fogDoor) {
-    const current = await getDoorState(metadata.fogDoor);
-    if (current.ok && !(await setDoorState(metadata.fogDoor, open)).ok) return { ok: false, reason: "update-failed" };
+    const current = await getProviderDoorState(metadata.fogDoor);
+    if (current.ok) {
+      const updated = await setProviderDoorState(metadata.fogDoor, open);
+      if (!updated.ok) return { ok: false, reason: "update-failed" };
+    }
   }
   return await renderDoorImage(image.id, open) === "updated" ? { ok: true } : { ok: false, reason: "render-failed" };
 }
@@ -60,8 +63,8 @@ export async function toggleLinkedDoorState(imageId: string): Promise<DoorStateC
     const denied = await playerMayOperate(metadata.locked === true);
     if (denied) return denied;
     if (metadata.fogDoor) {
-      const current = await getDoorState(metadata.fogDoor);
-      if (current.ok) return setLinkedDoorState(imageId, !current.door.open);
+      const current = await getProviderDoorState(metadata.fogDoor);
+      if (current.ok) return setLinkedDoorState(imageId, !current.open);
     }
     return setLinkedDoorState(imageId, metadata.renderedState !== "open");
   } catch {
@@ -90,6 +93,6 @@ export function doorStateErrorMessage(reason: Exclude<DoorStateCommandResult, { 
     case "locked": return "This door is locked.";
     case "player-operation-disabled": return "The GM has disabled player door operation for this scene.";
     case "render-failed": return "DoorJam could not render this door's artwork.";
-    default: return "Dynamic Fog could not update this door. Try relinking it.";
+    default: return "The linked fog provider could not update this door. Try relinking it.";
   }
 }

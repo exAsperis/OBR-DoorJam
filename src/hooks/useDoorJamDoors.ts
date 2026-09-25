@@ -1,6 +1,6 @@
 import OBR, { isImage, type Item } from "@owlbear-rodeo/sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { lookupDoor } from "../dynamicFog/adapter";
+import { lookupProviderDoor, providerName } from "../doorJam/providers";
 import { readDoorJamMetadata } from "../doorJam/metadata";
 import { readDoorJamSettings } from "../doorJam/settings";
 
@@ -11,6 +11,7 @@ export interface DoorListEntry {
   state: "open" | "closed" | null;
   linkValid: boolean;
   hasFogLink: boolean;
+  provider?: string | null;
   hasOpenArtwork: boolean;
   locked: boolean;
 }
@@ -19,11 +20,11 @@ export function buildDoorListEntries(items: Item[]): DoorListEntry[] {
   return items.filter(isImage).flatMap((image) => {
     const metadata = readDoorJamMetadata(image);
     if (!metadata) return [];
-    const linkedDoor = metadata.fogDoor ? lookupDoor(items, metadata.fogDoor) : null;
-    const state: DoorListEntry["state"] = linkedDoor?.ok ? (linkedDoor.door.open ? "open" : "closed") : metadata.renderedState;
+    const linkedDoor = metadata.fogDoor ? lookupProviderDoor(items, metadata.fogDoor) : null;
+    const state: DoorListEntry["state"] = linkedDoor?.ok ? (linkedDoor.open ? "open" : "closed") : metadata.renderedState;
     return [{ id: image.id, name: image.name, thumbnailUrl: image.image.url,
       state,
-      linkValid: !metadata.fogDoor || Boolean(linkedDoor?.ok), hasFogLink: Boolean(metadata.fogDoor), hasOpenArtwork: Boolean(metadata.openImage), locked: metadata.locked === true }];
+      linkValid: !metadata.fogDoor || Boolean(linkedDoor?.ok), hasFogLink: Boolean(metadata.fogDoor), provider: metadata.fogDoor ? providerName(metadata.fogDoor) : null, hasOpenArtwork: Boolean(metadata.openImage), locked: metadata.locked === true }];
   }).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) || a.id.localeCompare(b.id));
 }
 

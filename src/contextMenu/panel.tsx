@@ -6,7 +6,7 @@ import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control
 import { openDoorImagesPopover } from "../doorJam/imagesPopover";
 import { linkNearbyDoorOrCreate } from "../doorJam/linking";
 import { readDoorJamMetadata, removeDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "../doorJam/metadata";
-import { getDoorState } from "../dynamicFog/adapter";
+import { getProviderDoorState, providerName } from "../doorJam/providers";
 import { applyOwlbearTheme } from "../theme";
 
 export function ContextMenuPanel() {
@@ -24,7 +24,7 @@ export function ContextMenuPanel() {
     const selectedImage = item && isImage(item) ? item : null;
     setImage(selectedImage);
     const selectedMetadata = selectedImage ? readDoorJamMetadata(selectedImage) : null;
-    setLinked(Boolean(selectedMetadata?.fogDoor && (await getDoorState(selectedMetadata.fogDoor)).ok));
+    setLinked(Boolean(selectedMetadata?.fogDoor && (await getProviderDoorState(selectedMetadata.fogDoor)).ok));
   };
   useEffect(() => {
     let active = true;
@@ -65,13 +65,14 @@ export function ContextMenuPanel() {
   const metadata = readDoorJamMetadata(image);
   const run = async (action: () => Promise<void>) => { setBusy(true); try { await action(); await refresh(); } finally { setBusy(false); } };
   const notify = (message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT") => OBR.notification.show(message, variant);
-  const link = () => run(async () => {
+  const link = (provider: "dynamic-fog" | "smoke") => run(async () => {
+    const label = provider === "smoke" ? "Smoke & Spectre" : "Dynamic Fog";
     try {
-      const result = await linkNearbyDoorOrCreate(image, () => notify("No existing Dynamic Fog door found in range. Attempting to create new Dynamic Fog door."));
+      const result = await linkNearbyDoorOrCreate(image, () => notify(`No existing ${label} door found in range. Attempting safe creation.`), provider);
       if (!result.ok) { await notify(result.message, "ERROR"); return; }
-      await notify(result.outcome === "linked-existing" ? "Door image linked to Dynamic Fog door." : "New Dynamic Fog door created. Door image linked.");
+      await notify(result.outcome === "linked-existing" ? `Door image linked to ${label}.` : `New ${label} door created and linked.`);
       if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
-    } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
+    } catch { await notify(`DoorJam could not link this image to ${label}.`, "ERROR"); }
   });
   const setImages = () => run(() => openDoorImagesPopover(image.id));
   const toggle = () => run(async () => {
@@ -85,7 +86,7 @@ export function ContextMenuPanel() {
       const current = readDoorJamMetadata(item);
       if (current) removeFogDoorLink(item, current);
     });
-    await notify("Dynamic Fog link removed. DoorJam artwork was preserved.");
+    await notify(`${metadata?.fogDoor ? providerName(metadata.fogDoor) : "Fog"} link removed. DoorJam artwork was preserved.`);
   });
   const remove = () => run(async () => {
     await OBR.scene.items.updateItems([image.id], (items) => { if (items[0]) removeDoorJamMetadata(items[0]); });
@@ -114,11 +115,12 @@ export function ContextMenuPanel() {
     : { label: "Lock Door", icon: "/unlocked.svg" };
 
   return <main className="menu-panel" aria-label="DoorJam actions">
-    {!metadata ? <>{actionButton("setImages", setImages)}{actionButton("link", link)}</> : <>
+    {!metadata ? <>{actionButton("setImages", setImages)}{actionButton("link", () => link("dynamic-fog"))}{actionButton("linkSmoke", () => link("smoke"))}</> : <>
       {actionButton("operate", toggle)}
       <button key="lock" style={{ "--menu-icon": `url(${lockDefinition.icon})` } as CSSProperties} disabled={busy} onClick={() => void lock()}>{lockDefinition.label}</button>
       {actionButton("setImages", setImages)}
-      {!linked && actionButton("link", link)}
+      {actionButton("link", () => link("dynamic-fog"))}
+      {actionButton("linkSmoke", () => link("smoke"))}
       {metadata.fogDoor ? actionButton("unlink", unlink) : actionButton("remove", remove)}
     </>}
   </main>;

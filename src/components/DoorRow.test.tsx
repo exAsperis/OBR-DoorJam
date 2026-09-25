@@ -4,7 +4,7 @@ import { DoorRow } from "./DoorRow";
 
 vi.mock("../doorJam/highlight", () => ({ showDoorHighlight: vi.fn(), clearDoorHighlight: vi.fn() }));
 
-const door = { id: "door", name: "North Door", thumbnailUrl: "door.png", state: "closed" as const, linkValid: true, hasFogLink: true, hasOpenArtwork: true, locked: false };
+const door = { id: "door", name: "North Door", thumbnailUrl: "door.png", state: "closed" as const, linkValid: true, hasFogLink: true, provider: "Dynamic Fog", hasOpenArtwork: true, locked: false };
 
 describe("DoorRow", () => {
   it("shows the compact action and scene-selection state", () => {

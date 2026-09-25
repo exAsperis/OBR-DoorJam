@@ -12,6 +12,7 @@ export interface DynamicFogDoor {
 }
 
 export interface DynamicFogDoorRef {
+  provider?: "dynamic-fog";
   fogItemId: string;
   doorIndex: number;
 }

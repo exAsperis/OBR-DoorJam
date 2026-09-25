@@ -32,7 +32,7 @@ export async function chooseDoorArtwork(imageId: string, state: "open" | "closed
         return;
       }
       writeDoorJamMetadata(image, {
-        version: 2,
+        version: 3,
         closedImage: snapshotArtwork(image),
         openImage: artwork,
         renderedState: "closed",

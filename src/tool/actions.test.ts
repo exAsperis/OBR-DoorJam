@@ -50,7 +50,7 @@ describe("DoorJam tool modes", () => {
   it("links an image and opens unified image setup when open artwork is missing", async () => {
     mocks.link.mockResolvedValue({ ok: true, outcome: "linked-existing", distance: 10, doorCount: 1, needsOpenArtwork: true });
     await performDoorAction("link", image);
-    expect(mocks.link).toHaveBeenCalledWith(image, expect.any(Function));
+    expect(mocks.link).toHaveBeenCalledWith(image, expect.any(Function), "dynamic-fog");
     expect(mocks.openImages).toHaveBeenCalledWith("door");
   });
 
@@ -87,6 +87,7 @@ describe("DoorJam tool modes", () => {
       lock: "L",
       setImages: "I",
       link: "&",
+      linkSmoke: "S",
       unlink: "?",
       remove: "R",
     });

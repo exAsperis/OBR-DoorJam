@@ -1,17 +1,58 @@
 import OBR, { isImage, type Image } from "@owlbear-rodeo/sdk";
 import { LINK_DISTANCE_THRESHOLD } from "../constants";
 import { createDynamicFogDoor, findNearestDoor } from "../dynamicFog/adapter";
+import { chooseSmokeDoor, createSmokeDoor } from "../smoke/adapter";
 import { snapshotArtwork } from "./artwork";
 import { readDoorJamMetadata, writeDoorJamMetadata } from "./metadata";
 
 export type LinkResult = { ok: true; outcome: "linked-existing" | "created-new"; distance: number; doorCount: number; needsOpenArtwork: boolean } | { ok: false; message: string };
+export type DoorProvider = "dynamic-fog" | "smoke";
 
-export async function linkNearbyDoorOrCreate(image: Image, onCreateAttempt?: () => unknown | Promise<unknown>): Promise<LinkResult> {
+export async function linkNearbyDoorOrCreate(image: Image, onCreateAttempt?: () => unknown | Promise<unknown>, provider: DoorProvider = "dynamic-fog"): Promise<LinkResult> {
+  if (provider === "smoke") return linkSmokeDoorOrCreate(image, onCreateAttempt);
   const bounds = await OBR.scene.items.getItemBounds([image.id]);
   const nearest = await findNearestDoor({ x: bounds.center.x, y: bounds.center.y });
   if (nearest && nearest.distance <= LINK_DISTANCE_THRESHOLD) return linkNearestDoor(image);
   await onCreateAttempt?.();
   return createAndLinkDoor(image);
+}
+
+async function saveLink(image: Image, fogDoor: import("./metadata").FogDoorLink, renderedState: "open" | "closed"): Promise<boolean> {
+  let needsOpenArtwork = true;
+  await OBR.scene.items.updateItems([image.id], (items) => {
+    const target = items[0];
+    if (!target || !isImage(target)) return;
+    const existing = readDoorJamMetadata(target);
+    needsOpenArtwork = !existing?.openImage;
+    writeDoorJamMetadata(target, { version: 3, fogDoor, closedImage: existing?.closedImage ?? snapshotArtwork(target), openImage: existing?.openImage, renderedState, locked: existing?.locked });
+  });
+  return needsOpenArtwork;
+}
+
+export async function linkSmokeDoorOrCreate(image: Image, onCreateAttempt?: () => unknown | Promise<unknown>): Promise<LinkResult> {
+  const bounds = await OBR.scene.items.getItemBounds([image.id]);
+  const items = await OBR.scene.items.getItems();
+  const found = chooseSmokeDoor(items, bounds);
+  if (found.ok) {
+    const needsOpenArtwork = await saveLink(image, found.door.ref, found.door.open ? "open" : "closed");
+    return { ok: true, outcome: "linked-existing", distance: found.door.distance, doorCount: 1, needsOpenArtwork };
+  }
+  if (found.reason === "ambiguous") return { ok: false, message: "More than one plausible Smoke & Spectre door is near this image. Move or resize the image and try again." };
+  await onCreateAttempt?.();
+  const created = await createSmokeDoor(bounds);
+  if (!created.ok) {
+    const messages = {
+      "no-intersection": "No existing Smoke door or unambiguous straight obstruction was found at this image.",
+      "ambiguous-intersection": "More than one Smoke obstruction could form this door. Move or resize the image and try again.",
+      "unsupported-geometry": "This Smoke obstruction cannot be split safely. Only straight lines with wall remaining on both sides are supported.",
+      "attached-items": "This Smoke obstruction has attached items and cannot be split safely.",
+      "update-failed": "Smoke door creation failed and the original obstruction was preserved.",
+      duplicate: "Smoke door creation is already in progress for this image.",
+    } as const;
+    return { ok: false, message: messages[created.reason] };
+  }
+  const needsOpenArtwork = await saveLink(image, created.ref, "closed");
+  return { ok: true, outcome: "created-new", distance: 0, doorCount: 1, needsOpenArtwork };
 }
 
 export async function linkNearestDoor(image: Image): Promise<LinkResult> {
@@ -26,8 +67,8 @@ export async function linkNearestDoor(image: Image): Promise<LinkResult> {
     const existing = readDoorJamMetadata(target);
     needsOpenArtwork = !existing?.openImage;
     writeDoorJamMetadata(target, {
-      version: 2,
-      fogDoor: nearest.ref,
+      version: 3,
+      fogDoor: { provider: "dynamic-fog", ...nearest.ref },
       closedImage: existing?.closedImage ?? snapshotArtwork(target),
       openImage: existing?.openImage,
       renderedState: "closed",
@@ -55,8 +96,8 @@ export async function createAndLinkDoor(image: Image): Promise<LinkResult> {
     const existing = readDoorJamMetadata(target);
     needsOpenArtwork = !existing?.openImage;
     writeDoorJamMetadata(target, {
-      version: 2,
-      fogDoor: created.ref,
+      version: 3,
+      fogDoor: { provider: "dynamic-fog", ...created.ref },
       closedImage: existing?.closedImage ?? snapshotArtwork(target),
       openImage: existing?.openImage,
       renderedState: "closed",
