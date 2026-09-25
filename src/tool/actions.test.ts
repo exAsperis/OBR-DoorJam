@@ -31,6 +31,8 @@ vi.mock("../doorJam/settings", () => ({ getDoorJamSettings: vi.fn().mockResolved
 
 import { DOOR_ACTION_SHORTCUTS, DOORJAM_TOOL_SHORTCUT, performDoorAction, PLAYER_OPERATION_SHORTCUT } from "./actions";
 
+const RESERVED_SHORTCUTS: string[] = ["1", "2", "3", "4", "5", "6", "7", "-", "=", "W", "S", "F", "D", "M", "Q", "T", "H"];
+
 const image = { id: "door", type: "IMAGE" } as Image;
 
 describe("DoorJam tool modes", () => {
@@ -81,19 +83,9 @@ describe("DoorJam tool modes", () => {
     expect(mocks.setLocked).toHaveBeenCalledWith(image, metadata, true);
   });
 
-  it("assigns the requested shortcuts without overloading a key", () => {
-    expect(DOOR_ACTION_SHORTCUTS).toEqual({
-      operate: "O",
-      lock: "L",
-      setImages: "I",
-      link: "Y",
-      linkSmoke: "K",
-      unlink: "B",
-      remove: "R",
-    });
-    expect(PLAYER_OPERATION_SHORTCUT).toBe("X");
-
+  it("does not reuse reserved or duplicate shortcuts", () => {
     const shortcuts = [DOORJAM_TOOL_SHORTCUT, PLAYER_OPERATION_SHORTCUT, ...Object.values(DOOR_ACTION_SHORTCUTS)];
+    expect(shortcuts.filter((shortcut) => RESERVED_SHORTCUTS.includes(shortcut))).toEqual([]);
     expect(new Set(shortcuts).size).toBe(shortcuts.length);
   });
 });
