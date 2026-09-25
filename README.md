@@ -16,7 +16,7 @@ While a fog-provider link is valid, that provider is authoritative and DoorJam m
 
 DoorJam recognizes Smoke obstruction curves on the Pointers layer with `com.battle-system.smoke/isDoor: true`. It can link an intersecting or uniquely nearby door, or split one straight, open, two-point obstruction crossing the artwork into two wall remainders and an independently operable door. It does not attempt to infer a door from gaps between separate obstruction segments. Multi-point or genuinely curved paths, closed polygons, multiple intersections, tiny wall remainders, and obstructions with dependent attachments are rejected without modifying the original.
 
-New split items inherit the predecessor's style, layer, transforms, locking, attachment configuration, and unrelated metadata. DoorJam does not special-case metadata from other extensions. Smoke's metadata is private and has no published integration API; runtime compatibility must be verified in an Owlbear development room. For a valid Smoke door, opening sets both `doorOpen` and `disabled`, while closing removes both canonical door-state flags.
+New split items inherit the predecessor's style, layer, transforms, locking, attachment configuration, and unrelated metadata. For a valid Smoke door, opening sets both `doorOpen` and `disabled`, while closing removes both canonical door-state flags.
 
 ## Development
 

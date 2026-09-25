@@ -8,10 +8,20 @@
     <title>DoorJam for Owlbear Rodeo</title>
     <style>
       :root { color-scheme: light dark; font-family: Inter, system-ui, sans-serif; background: #17130f; color: #fff8ed; }
-      body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 15%, #4a2a0b, #17130f 58%); }
-      main { width: min(680px, calc(100% - 40px)); padding: 52px 0; }
-      .mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 18px; background: #d97706; font-size: 34px; }
-      h1 { margin: 22px 0 8px; font-size: clamp(42px, 10vw, 72px); letter-spacing: -.05em; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; background: radial-gradient(circle at 50% 15%, #310b4a, #17130f 58%); }
+      main { width: min(1400px, calc(100% - 40px)); padding: 52px 0; }
+      .mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 18px; background: #c971ec; font-size: 34px; flex-shrink: 0;}
+      .tool-definitions { display: flex; gap: 12px; flex-wrap: wrap; margin: 12px 0 24px; }
+      .tool-card { display: flex; align-items: flex-start; gap: 12px; padding: 24px 64px 24px 24px; border-radius: 12px; background: #25142c; width: 340px; }
+      .tool-card h3 { margin: 0 0 4px; }
+      .tool-card p { text-align: justify; }
+      .tool-glyph { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 20px; background: rgba(30, 34, 49, 0.6); font-size: 34px; flex-shrink: 0;}
+      .tool-glyph img { width: 24px; height: 24px; filter: brightness(0) invert(1); }
+      .toolbar { backdrop-filter: blur(10px); background-color: rgba(30, 34, 49, 0.6); border-radius: 20px; display: flex; box-sizing: border-box; line-height: 24px; width: fit-content;}
+      .toolbar span { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 20px; background-color: transparent; border: none; cursor: pointer; }
+      .toolbar span:hover { background-color: rgba(255, 255, 255, 0.1); }
+      .toolbar hr { margin: 0 12px; border: none; border-left: 1px solid rgba(255, 255, 255, 0.2); }
+      h1 { margin: 22px 0 8px; font-size: clamp(42px, 10vw, 72px); letter-spacing: -.05em; display:flex; align-items: center; gap: 12px; }
       p { max-width: 590px; color: #d8c8b4; font-size: 18px; line-height: 1.6; }
       ol { margin: 30px 0; padding-left: 24px; color: #f3dfc4; line-height: 1.9; }
       a { color: #ffb347; }
@@ -19,15 +29,99 @@
   </head>
   <body>
     <main>
-      <div class="mark" aria-hidden="true">▥</div>
-      <h1>DoorJam</h1>
+      
+      <h1><span class="mark" aria-hidden="true"><img src="public/icon.svg" alt="DoorJam Logo" /></span> DoorJam</h1>
       <p>An Owlbear Rodeo enhancement that turns ordinary door artwork into synchronized controls for Dynamic Fog and Smoke &amp; Spectre.</p>
-      <ol>
-        <li>Put closed-door art over a Dynamic Fog or Smoke &amp; Spectre door.</li>
-        <li>Right-click and link it to the nearest door.</li>
-        <li>Assign open art, then use Open Door and Close Door.</li>
-      </ol>
+      <h2>Quick Start</h2>
       <p><a href="https://github.com/exAsperis/OBR-DoorJam">Source and installation</a></p>
+      <ol>
+        <li>Drag an image representing a closed door over a <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door.</li>
+        <li>Us the <i>DoorJam</i> tools, or right-click context menu, to link the door item to the nearest <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door.</li>
+        <li>Assign an image to represent the open state. Your <i>DoorJam</i> door is now linked to the fog or smoke door. You can operate the door from either the <i>DoorJam</i> tools or the linked door item.</li>
+      </ol>
+      <p>Of course, you can use <i>DoorJam</i> without linking it to a fog or smoke door to create a simple, visual door open/close effect. In this case, you're simply switching between two images, so you're not necessarily limited to "doors".</p>
+      <h2>Tool Modes</h2>
+
+      <div class="toolbar">
+        <span class="tool-glyph" aria-hidden="true"><img src="/icon.svg" alt="DoorJam Tools (J)" /></span>
+      </div>
+      <div class="toolbar">
+        <span class="tool-glyph" aria-hidden="true"><img src="/tool-operate.svg" alt="Operate Door (O)" /></span>
+        <span class="tool-glyph" aria-hidden="true"><img src="/overlay-locked.svg" alt="Lock/Unlock Door (L)" /></span>
+        <span class="tool-glyph" aria-hidden="true"><img src="/set-open-image.svg" alt="Set Image (I)" /></span>
+        <span class="tool-glyph" aria-hidden="true"><img src="/tool-link.svg" alt="Link/Create Dynamic Fog Door (Y)" /></span>
+        <span class="tool-glyph" aria-hidden="true"><img src="/tool-link-smoke.svg" alt="Link/Create Smoke & Spectre! Door (K)" /></span>
+        <span class="tool-glyph" aria-hidden="true"><img src="/tool-unlink.svg" alt="Break Link (B)" /></span>
+        <span class="tool-glyph" aria-hidden="true"><img src="/remove-door.svg" alt="Remove Door (R)" /></span>
+        <hr class="MuiDivider-root MuiDivider-middle MuiDivider-vertical MuiDivider-flexItem css-1lh99xa">
+        <span class="tool-glyph" aria-hidden="true"><img src="/no-operate.svg" alt="Allow/Prevent Player Door Operation (X)" /></span>
+      </div>
+
+      <div class="tool-definitions">
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/icon.svg" alt="DoorJam Tool" /></span>
+          <div>
+            <h3>DoorJam Tools (J)</h3>
+            <p>Opens the DoorJam tool panel.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/tool-operate.svg" alt="Operate Door (O)" /></span>
+          <div>
+            <h3>Operate Door (O)</h3>
+            <p>Clicking an established <i>DoorJam</i> door item with this tool will toggle its open/closed state. If the door is linked to a <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door, that door will open or close accordingly.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/overlay-locked.svg" alt="Lock/Unlock Door (L)" /></span>
+          <div>
+            <h3>Lock/Unlock Door (L)</h3>
+            <p>Clicking an established <i>DoorJam</i> door item with this tool will toggle its locked/unlocked state. Locked doors are not operable by players (even if player door operation is otherwise allowed). However, doors are always operable by a GM.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/set-open-image.svg" alt="Set Image (I)" /></span>
+          <div>
+            <h3>Set Image (I)</h3>
+            <p>Clicking an item with this tool will allow you to set the images for the open and closed state. Once both images are set, the item becomes an operable <i>DoorJam</i> door.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/tool-link.svg" alt="Link/Create Dynamic Fog Door (Y)" /></span>
+          <div>
+            <h3>Link/Create Dynamic Fog Door (Y)</h3>
+            <p>Clicking an item with this tool will attempt tolink it to an existing <i>Dynamic Fog</i> door, or create a new <i>Dynamic Fog</i> door where the image intersects with a fog boundary. This enables synchronized operation between the door and the fog effect.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/tool-link-smoke.svg" alt="Link/Create Smoke & Spectre! Door (K)" /></span>
+          <div>
+            <h3>Link/Create Smoke & Spectre! Door (K)</h3>
+            <p>Clicking an item with this tool will attempt tolink it to an existing <i>Smoke &amp; Spectre!</i> door, or create a new <i>Smoke &amp; Spectre!</i> door where the image intersects with a straight, unbroken Obstruction Line. This enables synchronized operation between the door and the obstruction line.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/tool-unlink.svg" alt="Break Link (B)" /></span>
+          <div>
+            <h3>Break Link (B)</h3>
+            <p>Clicking an item with this tool will allow you to break the link between it and any associated <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door. The item will still behave as a standard, <i>DoorJam</i> door, and can be linked to another door as desired.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/remove-door.svg" alt="Remove Door (R)" /></span>
+          <div>
+            <h3>Remove Door (R)</h3>
+            <p>Clicking an item with this tool will change it from a <i>DoorJam</i> door to a standard object. If the item is currently linked to a <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door, the link will be broken but the underlying door will remain.</p>
+          </div>
+        </div>
+        <div class="tool-card">
+          <span class="tool-glyph" aria-hidden="true"><img src="/no-operate.svg" alt="Allow/Prevent Player Door Operation (X)" /></span>
+          <div>
+            <h3>Allow/Prevent Player Door Operation (X)</h3>
+            <p>Clicking this tool enables or disables player operation of all <i>DoorJam</i> doors in the scene. Individual door operation can be overridden with the <i>Lock/Unlock Door</i> tool.</p>
+          </div>
+        </div>
+      </div>
     </main>
   </body>
 </html>
