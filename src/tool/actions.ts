@@ -17,9 +17,9 @@ export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
   operate: "O",
   lock: "L",
   setImages: "I",
-  link: "&",
-  linkSmoke: "S",
-  unlink: "?",
+  link: "Y",
+  linkSmoke: "K",
+  unlink: "B",
   remove: "R",
 };
 

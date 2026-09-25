@@ -2,8 +2,8 @@ export const DOOR_ACTIONS = {
   operate: { label: "Operate Door", icon: "/tool-operate.svg" },
   lock: { label: "Lock/Unlock Door", icon: "/locked.svg" },
   setImages: { label: "Set Images", icon: "/set-open-image.svg" },
-  link: { label: "Link Dynamic Fog Door", icon: "/tool-link.svg" },
-  linkSmoke: { label: "Link Smoke & Spectre Door", icon: "/tool-link-to-new.svg" },
+  link: { label: "Link/Create Dynamic Fog Door", icon: "/tool-link.svg" },
+  linkSmoke: { label: "Link/Create Smoke & Spectre! Door", icon: "/tool-link-smoke.svg" },
   unlink: { label: "Unlink Door", icon: "/tool-unlink.svg" },
   remove: { label: "Remove Door", icon: "/remove-door.svg" },
 } as const;
