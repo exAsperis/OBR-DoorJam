@@ -27,7 +27,7 @@ describe("openDoorImagesPopover", () => {
       id: DOOR_IMAGES_POPOVER_ID,
       url: "/image-settings.html?imageId=door%20%2F%20one",
       width: 320,
-      height: 230,
+      height: 272,
       anchorReference: "POSITION",
       anchorPosition: { left: 150, top: 275 },
       transformOrigin: { horizontal: "RIGHT", vertical: "BOTTOM" },

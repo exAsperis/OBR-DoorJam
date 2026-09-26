@@ -57,11 +57,13 @@
         <a href="#tool-lock" aria-label="Lock/Unlock Door (L)"><span class="tool-glyph" aria-hidden="true" title="Lock/Unlock Door (L)"><img src="/overlay-locked.svg" alt="" /></span></a>
         <a href="#tool-set-image" aria-label="Set Image (I)"><span class="tool-glyph" aria-hidden="true" title="Set Image (I)"><img src="/set-open-image.svg" alt="" /></span></a>
         <a href="#tool-link-fog" aria-label="Link/Create Dynamic Fog Door (Y)"><span class="tool-glyph" aria-hidden="true" title="Link/Create Dynamic Fog Door (Y)"><img src="/tool-link.svg" alt="" /></span></a>
+        <a href="#tool-edit-dynamic-fog" aria-label="Edit Dynamic Fog Door (E)"><span class="tool-glyph" aria-hidden="true" title="Edit Dynamic Fog Door (E)"><img src="/tool-edit-dynamic-fog.svg" alt="" /></span></a>
         <a href="#tool-link-smoke" aria-label="Link/Create Smoke &amp; Spectre! Door (K)"><span class="tool-glyph" aria-hidden="true" title="Link/Create Smoke &amp; Spectre! Door (K)"><img src="/tool-link-smoke.svg" alt="" /></span></a>
         <a href="#tool-unlink" aria-label="Break Link (B)"><span class="tool-glyph" aria-hidden="true" title="Break Link (B)"><img src="/tool-unlink.svg" alt="" /></span></a>
         <a href="#tool-remove" aria-label="Remove Door (R)"><span class="tool-glyph" aria-hidden="true" title="Remove Door (R)"><img src="/remove-door.svg" alt="" /></span></a>
         <hr class="MuiDivider-root MuiDivider-middle MuiDivider-vertical MuiDivider-flexItem css-1lh99xa">
         <a href="#tool-player-operation" aria-label="Allow/Prevent Player Door Operation (X)"><span class="tool-glyph" aria-hidden="true"><img src="/no-operate.svg" alt="" /></span></a>
+        <a href="#settings" aria-label="Settings"><span class="tool-glyph" aria-hidden="true"><img src="/settings.svg" alt="" /></span></a>
       </div>
 
       <div class="tool-definitions">
@@ -69,7 +71,7 @@
           <span class="tool-glyph" aria-hidden="true"><img src="/icon.svg" alt="DoorJam Tool" /></span>
           <div>
             <h3>DoorJam Tools (J)</h3>
-            <p>Opens the DoorJam tool panel.</p>
+            <p>Opens the DoorJam tool rail.</p>
           </div>
         </div>
         <div class="tool-card" id="tool-operate">
@@ -100,6 +102,13 @@
             <p>Clicking an item with this tool will attempt to link it to an existing <i>Dynamic Fog</i> door, or create a new <i>Dynamic Fog</i> door where the image intersects with a fog boundary. This enables synchronized operation between the door and the fog effect.</p>
           </div>
         </div>
+        <div class="tool-card" id="tool-edit-dynamic-fog">
+          <span class="tool-glyph" aria-hidden="true"><img src="/tool-edit-dynamic-fog.svg" alt="Edit Dynamic Fog Door (E)" /></span>
+          <div>
+            <h3>Edit Dynamic Fog Door (E)</h3>
+            <p>Selecting this tool will allow you to edit the position and size of any <i>Dynamic Fog</i> door in the scene. This is useful for fine-tuning the door's placement and dimensions after it has been automaticallycreated.</p>
+          </div>
+        </div>
         <div class="tool-card" id="tool-link-smoke">
           <span class="tool-glyph" aria-hidden="true"><img src="/tool-link-smoke.svg" alt="Link/Create Smoke & Spectre! Door (K)" /></span>
           <div>
@@ -126,6 +135,13 @@
           <div>
             <h3>Allow/Prevent Player Door Operation (X)</h3>
             <p>Clicking this tool enables or disables player operation of all <i>DoorJam</i> doors in the scene. Individual door operation can be overridden with the <i>Lock/Unlock Door</i> tool.</p>
+          </div>
+        </div>
+        <div class="tool-card" id="settings">
+          <span class="tool-glyph" aria-hidden="true"><img src="/settings.svg" alt="Settings" /></span>
+          <div>
+            <h3>Settings</h3>
+            <p>Clicking this tool will open the DoorJam settings panel, where you can configure options and preferences for the extension.</p>
           </div>
         </div>
       </div>

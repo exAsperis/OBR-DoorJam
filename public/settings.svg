@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 24 24"
+   fill="none"
+   stroke="currentColor"
+   stroke-width="2"
+   stroke-linecap="round"
+   stroke-linejoin="round"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="settings.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="48.625"
+     inkscape:cx="12"
+     inkscape:cy="12"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
+     inkscape:window-x="1072"
+     inkscape:window-y="259"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <circle
+     cx="12"
+     cy="12"
+     r="3"
+     id="circle1" />
+  <path
+     d="m 20.587044,15.481234 a 1.9726992,1.9726992 0 0 0 0.39454,2.181573 l 0.06962,0.06962 -3.283964,3.283964 -0.06962,-0.06963 a 1.9726992,1.9726992 0 0 0 -2.181574,-0.39454 1.9726992,1.9726992 0 0 0 -1.195223,1.810242 v 0.08123 H 9.6791774 v -0.104437 a 1.9726992,1.9726992 0 0 0 -1.1604113,-1.798638 1.9726992,1.9726992 0 0 0 -2.1815733,0.39454 l -0.069625,0.06962 -3.283964,-3.283964 0.069625,-0.06963 A 1.9726992,1.9726992 0 0 0 3.4477686,15.481234 1.9726992,1.9726992 0 0 0 1.6491311,14.320823 H 1.5562982 V 9.6791774 h 0.104437 A 1.9726992,1.9726992 0 0 0 3.4593728,8.5187661 1.9726992,1.9726992 0 0 0 3.0648329,6.3371928 l -0.069625,-0.069625 3.283964,-3.283964 0.069625,0.069625 a 1.9726992,1.9726992 0 0 0 2.1699692,0.3945398 h 0.011604 A 1.9726992,1.9726992 0 0 0 9.6791774,1.6491311 v -0.092833 h 4.6416456 v 0.104437 a 1.9726992,1.9726992 0 0 0 1.160411,1.7986376 1.9726992,1.9726992 0 0 0 2.181573,-0.3945399 l 0.06962,-0.069625 3.283964,3.283964 -0.06963,0.069625 A 1.9726992,1.9726992 0 0 0 20.552221,8.518766 V 8.53037 a 1.9726992,1.9726992 0 0 0 1.798638,1.1488072 h 0.09283 v 4.6416458 h -0.104437 a 1.9726992,1.9726992 0 0 0 -1.752221,1.160411 z"
+     id="path1"
+     style="stroke-width:2;stroke-dasharray:none;stroke-linejoin:round" />
+</svg>

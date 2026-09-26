@@ -1,10 +1,11 @@
 import OBR, { Command, buildPath, buildShape, type Item, type PathCommand, type ToolEvent, type Vector2 } from "@owlbear-rodeo/sdk";
-import { EXTENSION_ID } from "../constants";
+import { DOORJAM_TOOL_PREFERENCES_KEY, EXTENSION_ID } from "../constants";
 import { DYNAMIC_FOG_DOORS_KEY, parseDynamicFogDoors, updateDoorGeometry } from "../dynamicFog/adapter";
 import { geometryFingerprint, getEditableContour, type EditableContour } from "../dynamicFog/editContour";
 import { chooseDoorEditHandle, doorSpansOverlap, proposeDoorEdit, type DoorEditHandle, type DoorEditProposal } from "../dynamicFog/editGeometry";
 import type { DynamicFogDoor, DynamicFogDoorRef } from "../dynamicFog/types";
-import { DOORJAM_TOOL_ID, modeId } from "./actions";
+import { DOORJAM_TOOL_ID, modeId } from "./ids";
+import { readToolPreferences } from "./preferences";
 
 export const DYNAMIC_FOG_EDITOR_ACTION = "editDynamicFog";
 export const DYNAMIC_FOG_EDITOR_MODE_ID = modeId(DYNAMIC_FOG_EDITOR_ACTION);
@@ -154,7 +155,10 @@ export async function setupDynamicFogEditorMode(): Promise<() => void> {
 
   await OBR.tool.createMode({
     id: DYNAMIC_FOG_EDITOR_MODE_ID,
-    icons: [{ icon: "/tool-edit-dynamic-fog.svg", label: "Edit Dynamic Fog Door", filter: { activeTools: [DOORJAM_TOOL_ID], roles: ["GM"] } }],
+    icons: [{ icon: "/tool-edit-dynamic-fog.svg", label: "Edit Dynamic Fog Door", filter: {
+      activeTools: [DOORJAM_TOOL_ID], roles: ["GM"],
+      metadata: [{ key: [DOORJAM_TOOL_PREFERENCES_KEY, "dynamicFog"], value: true }],
+    } }],
     disabled: { roles: ["PLAYER"] }, shortcut: "E",
     cursors: [{ cursor: "pointer", filter: { activeTools: [DOORJAM_TOOL_ID], activeModes: [DYNAMIC_FOG_EDITOR_MODE_ID] } }],
     onToolClick: () => false,
@@ -163,7 +167,14 @@ export async function setupDynamicFogEditorMode(): Promise<() => void> {
     onToolUp: () => void dragEnd(),
     onToolDragCancel: () => void dragCancel(),
     onKeyDown: (_context, event) => { if (event.key === "Escape") void dragCancel(); },
-    onActivate: () => { active = true; void loadAll(); },
+    onActivate: (context) => {
+      if (!readToolPreferences(context.metadata).dynamicFog) {
+        void OBR.tool.activateMode(DOORJAM_TOOL_ID, modeId("operate"));
+        return;
+      }
+      active = true;
+      void loadAll();
+    },
     onDeactivate: () => { active = false; void clear(); },
   });
   const removeReady = OBR.scene.onReadyChange((ready) => {

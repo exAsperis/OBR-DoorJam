@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { chooseDoorArtwork, swapDoorArtwork } from "../doorJam/artwork";
 import { readDoorJamMetadata } from "../doorJam/metadata";
 import { applyOwlbearTheme } from "../theme";
+import { DOOR_IMAGES_POPOVER_ID } from "../doorJam/imagesPopover";
 
 export function ImageSettingsPanel({ targetImageId }: { targetImageId?: string | null } = {}) {
   const imageId = targetImageId === undefined ? new URLSearchParams(window.location.search).get("imageId") : targetImageId;
@@ -82,5 +83,6 @@ export function ImageSettingsPanel({ targetImageId }: { targetImageId?: string |
       disabled={busy !== null || !openUrl || !closedUrl}
       onClick={() => void swap()}
     >⇄</button>
+    <button type="button" className="close-button" onClick={() => void OBR.popover.close(DOOR_IMAGES_POPOVER_ID)}>Close</button>
   </main>;
 }

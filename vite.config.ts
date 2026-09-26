@@ -12,6 +12,7 @@ export default defineConfig({
         background: "background.html",
         contextMenu: "context-menu.html",
         imageSettings: "image-settings.html",
+        toolSettings: "tool-settings.html",
       },
     },
   },

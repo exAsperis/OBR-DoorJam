@@ -1,0 +1,19 @@
+@import "../styles.css";
+
+html, body, #root { height: 100%; min-height: 0; overflow: hidden; }
+body { min-width: 0; background: var(--obr-paper); }
+.tool-settings { display: grid; height: 100%; min-height: 0; padding: 14px; align-content: start; gap: 10px; overflow: hidden; background: var(--obr-paper); }
+.tool-settings.status { place-items: center; color: var(--obr-muted); }
+.tool-settings header { margin-bottom: 2px; }
+.tool-settings header span { color: var(--obr-primary); font-size: 10px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.tool-settings h1 { margin-top: 2px; font-size: 18px; }
+.setting-row { display: flex; min-height: 54px; padding: 9px 10px; align-items: center; justify-content: space-between; gap: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; }
+.setting-row span { display: grid; min-width: 0; gap: 3px; }
+.setting-row strong { font-size: 13px; }
+.setting-row small { color: var(--obr-muted); font-size: 10px; }
+.setting-row input { position: relative; width: 38px; height: 22px; margin: 0; flex: 0 0 auto; appearance: none; border: 1px solid var(--border); border-radius: 999px; background: color-mix(in srgb, var(--obr-muted) 35%, transparent); cursor: pointer; transition: background .16s ease; }
+.setting-row input::after { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); content: ""; transition: transform .16s ease; }
+.setting-row input:checked { border-color: var(--obr-primary); background: var(--obr-primary); }
+.setting-row input:checked::after { transform: translateX(16px); }
+.setting-row input:focus-visible { outline: 2px solid var(--obr-primary); outline-offset: 2px; }
+.close-button { min-height: 34px; }

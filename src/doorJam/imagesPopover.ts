@@ -11,7 +11,7 @@ export async function openDoorImagesPopover(imageId: string): Promise<void> {
     id: DOOR_IMAGES_POPOVER_ID,
     url: `/image-settings.html?imageId=${encodeURIComponent(imageId)}`,
     width: 320,
-    height: 230,
+    height: 272,
     anchorReference: "POSITION",
     anchorPosition: { left: point.x, top: point.y },
     anchorOrigin: { horizontal: "CENTER", vertical: "TOP" },
