@@ -1,0 +1,2 @@
+.break-panel { padding: 16px; display: grid; gap: 8px; color: var(--text-primary, #f4f4f5); background: var(--background-primary, #202124); }
+.break-panel h1,.break-panel p { margin: 0; }.break-panel button { padding: 9px; }.break-panel .cancel { margin-top: 4px; }

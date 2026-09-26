@@ -4,8 +4,9 @@ import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
 import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control";
 import { openDoorImagesPopover } from "../doorJam/imagesPopover";
 import { linkNearbyDoorOrCreate } from "../doorJam/linking";
-import { providerName } from "../doorJam/providers";
-import { readDoorJamMetadata, removeDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "../doorJam/metadata";
+import { countDoorLinks, readDoorJamMetadata, removeDoorJamMetadata, setDoorLocked } from "../doorJam/metadata";
+import { breakDoorLinkInteractive } from "../doorJam/breakLink";
+import { discoverAndLinkStageManager } from "../stageManager/linking";
 import { getDoorJamSettings, setPlayersCanOperate } from "../doorJam/settings";
 import { handleDoorOverlayDoubleClick } from "../doorJam/overlays";
 import { getToolPreferences, readToolPreferences, type DoorJamToolPreferences } from "./preferences";
@@ -22,6 +23,7 @@ export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
   setImages: "I",
   link: "Y",
   linkSmoke: "K",
+  linkStageManager: "U",
   unlink: "B",
   remove: "R",
 };
@@ -31,10 +33,10 @@ async function selectedDoorImage(target: Item | undefined, action: DoorActionNam
   if (!(await OBR.scene.isReady()) || !target || !isImage(target)) return null;
   if (role !== "GM" && action !== "operate") return null;
   const configured = Boolean(readDoorJamMetadata(target));
-  if (action !== "link" && action !== "linkSmoke" && action !== "setImages" && !configured) return null;
+  if (action !== "link" && action !== "linkSmoke" && action !== "linkStageManager" && action !== "setImages" && !configured) return null;
   const metadata = readDoorJamMetadata(target);
-  if (action === "unlink" && !metadata?.fogDoor) return null;
-  if (action === "remove" && (!metadata || metadata.fogDoor)) return null;
+  if (action === "unlink" && (!metadata || countDoorLinks(metadata) === 0)) return null;
+  if (action === "remove" && (!metadata || countDoorLinks(metadata) !== 0)) return null;
   return target;
 }
 
@@ -55,9 +57,19 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
     return;
   }
+  if (action === "linkStageManager") {
+    const result = await discoverAndLinkStageManager(image);
+    if (!result.ok) await notify(result.message, "ERROR");
+    else if (!("choosing" in result)) {
+      await notify(result.warning ? "Door linked, but Stage Manager could not update the Elevator." : "Door linked to Stage Manager Elevator.", result.warning ? "ERROR" : "DEFAULT");
+      if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
+    }
+    return;
+  }
   if (action === "operate") {
     const result = await toggleLinkedDoorState(image.id);
     if (!result.ok) await notify(doorStateErrorMessage(result.reason), "ERROR");
+    else if (result.warnings?.length) await notify("Door changed state, but one or more integrations could not update.", "ERROR");
     return;
   }
   if (action === "setImages") {
@@ -65,14 +77,7 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     return;
   }
   if (action === "unlink") {
-    const linkedMetadata = readDoorJamMetadata(image);
-    await OBR.scene.items.updateItems([image.id], (items) => {
-      const item = items[0];
-      if (!item) return;
-      const metadata = readDoorJamMetadata(item);
-      if (metadata) removeFogDoorLink(item, metadata);
-    });
-    await notify(`${linkedMetadata?.fogDoor ? providerName(linkedMetadata.fogDoor) : "Fog"} link removed. DoorJam artwork was preserved.`);
+    await breakDoorLinkInteractive(image.id);
     return;
   }
   if (action === "lock") {
@@ -131,19 +136,17 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
     defaultMetadata: { [DOORJAM_TOOL_PREFERENCES_KEY]: preferences },
     shortcut: DOORJAM_TOOL_SHORTCUT,
   });
+  // Existing Owlbear tool metadata can survive registration. Write the
+  // normalized fail-open preferences so upgrades gain the Stage Manager key.
+  await OBR.tool.setMetadata(DOORJAM_TOOL_ID, { [DOORJAM_TOOL_PREFERENCES_KEY]: preferences });
   let removeDynamicFogEditor: (() => void) | undefined;
   for (const action of actions) {
     if (role !== "GM" && action !== "operate") continue;
     const definition = DOOR_ACTIONS[action];
-    const providerPreference = action === "link" ? "dynamicFog" : action === "linkSmoke" ? "smoke" : null;
+    const providerPreference = action === "link" ? "dynamicFog" : action === "linkSmoke" ? "smoke" : action === "linkStageManager" ? "stageManager" : null;
     const visibilityMetadata = providerPreference
       ? [{ key: [DOORJAM_TOOL_PREFERENCES_KEY, providerPreference], value: true }]
-      : action === "unlink"
-        ? [
-            { key: [DOORJAM_TOOL_PREFERENCES_KEY, "dynamicFog"], value: true, coordinator: "||" as const },
-            { key: [DOORJAM_TOOL_PREFERENCES_KEY, "smoke"], value: true },
-          ]
-        : undefined;
+      : undefined;
     await OBR.tool.createMode({
       id: modeId(action),
       icons: [{ icon: definition.icon, label: definition.label, filter: {
@@ -153,9 +156,9 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
       disabled: action === "operate" ? undefined : { roles: ["PLAYER"] },
       shortcut: DOOR_ACTION_SHORTCUTS[action],
       cursors: targetCursor(action),
-      onActivate: providerPreference || action === "unlink" ? (context) => {
+      onActivate: providerPreference ? (context) => {
         const current = readToolPreferences(context.metadata);
-        const enabled = providerPreference ? current[providerPreference] : current.dynamicFog || current.smoke;
+        const enabled = current[providerPreference];
         if (!enabled) void OBR.tool.activateMode(DOORJAM_TOOL_ID, modeId("operate"));
       } : undefined,
       onToolClick: async (_context, event: ToolEvent) => { await performDoorAction(action, event.target); return false; },

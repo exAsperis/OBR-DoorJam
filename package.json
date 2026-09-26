@@ -1,7 +1,7 @@
 {
   "name": "doorjam",
   "private": true,
-  "version": "0.13.0",
+  "version": "0.14.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,5 +28,5 @@
     "vite": "^7.1.5",
     "vitest": "^3.2.4"
   },
-  "description": "Operate artwork-driven doors with Dynamic Fog or Smoke & Spectre synchronization."
+  "description": "Operate artwork-driven doors linked independently to Dynamic Fog, Smoke & Spectre!, and Stage Manager Elevators."
 }

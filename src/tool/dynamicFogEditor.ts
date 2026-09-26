@@ -9,6 +9,7 @@ import { readToolPreferences } from "./preferences";
 
 export const DYNAMIC_FOG_EDITOR_ACTION = "editDynamicFog";
 export const DYNAMIC_FOG_EDITOR_MODE_ID = modeId(DYNAMIC_FOG_EDITOR_ACTION);
+export const DYNAMIC_FOG_EDITOR_SHORTCUT = "E";
 const CONTROL_KEY = `${EXTENSION_ID}/dynamic-fog-editor-control`;
 const DOOR_INDICATOR_COLOR = "#00ff66";
 
@@ -159,7 +160,7 @@ export async function setupDynamicFogEditorMode(): Promise<() => void> {
       activeTools: [DOORJAM_TOOL_ID], roles: ["GM"],
       metadata: [{ key: [DOORJAM_TOOL_PREFERENCES_KEY, "dynamicFog"], value: true }],
     } }],
-    disabled: { roles: ["PLAYER"] }, shortcut: "E",
+    disabled: { roles: ["PLAYER"] }, shortcut: DYNAMIC_FOG_EDITOR_SHORTCUT,
     cursors: [{ cursor: "pointer", filter: { activeTools: [DOORJAM_TOOL_ID], activeModes: [DYNAMIC_FOG_EDITOR_MODE_ID] } }],
     onToolClick: () => false,
     onToolDown: (_context, event) => dragStart(event),

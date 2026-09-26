@@ -1,5 +1,5 @@
 import OBR, { isImage, type Item } from "@owlbear-rodeo/sdk";
-import { lookupProviderDoor } from "./providers";
+import { resolveFogProviderState } from "./providers";
 import { applyArtwork } from "./artwork";
 import { readDoorJamMetadata, writeDoorJamMetadata } from "./metadata";
 
@@ -9,9 +9,9 @@ export async function synchronizeFromItems(items: Item[]): Promise<void> {
   const request = ++generation;
   const changes = items.filter(isImage).flatMap((image) => {
     const metadata = readDoorJamMetadata(image);
-    if (!metadata?.fogDoor) return [];
-    const lookup = lookupProviderDoor(items, metadata.fogDoor);
-    if (!lookup.ok) return [];
+    if (!metadata) return [];
+    const lookup = resolveFogProviderState(items, metadata);
+    if (!lookup?.ok) return [];
     const desired = lookup.open ? "open" : "closed";
     const artwork = lookup.open ? metadata.openImage : metadata.closedImage;
     return metadata.renderedState !== desired && artwork ? [{ id: image.id, desired, artwork }] : [];

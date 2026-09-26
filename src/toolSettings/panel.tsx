@@ -36,7 +36,7 @@ export function ToolSettingsPanel() {
     if ((!next.dynamicFog && activeMode === modeId("editDynamicFog")) ||
         (!next.dynamicFog && activeMode === modeId("link")) ||
         (!next.smoke && activeMode === modeId("linkSmoke")) ||
-        (!next.dynamicFog && !next.smoke && activeMode === modeId("unlink"))) {
+        (!next.stageManager && activeMode === modeId("linkStageManager"))) {
       await OBR.tool.activateMode(DOORJAM_TOOL_ID, modeId("operate"));
     }
   };
@@ -50,6 +50,7 @@ export function ToolSettingsPanel() {
     <header><span>DoorJam</span><h1>Tool Settings</h1></header>
     {row("dynamicFog", "Dynamic Fog", "Link, create, and edit tools")}
     {row("smoke", "Smoke & Spectre!", "Link and create tools")}
+    {row("stageManager", "Stage Manager", "Link Elevator tools")}
     <button type="button" className="close-button" onClick={() => void OBR.popover.close(TOOL_SETTINGS_POPOVER_ID)}>Close</button>
   </main>;
 }

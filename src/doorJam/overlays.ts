@@ -1,9 +1,9 @@
 import OBR, { buildBillboard, isImage, type Image, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "../constants";
-import { getProviderDoorState, providerName } from "./providers";
+import { lookupDynamicFogDoor, INTEGRATION_NAMES } from "./providers";
 import { linkNearbyDoorOrCreate } from "./linking";
 import { openDoorImagesPopover } from "./imagesPopover";
-import { readDoorJamMetadata, removeFogDoorLink, setDoorLocked } from "./metadata";
+import { readDoorJamMetadata, removeDoorLink, setDoorLocked } from "./metadata";
 
 const OVERLAY_KEY = `${EXTENSION_ID}/door-overlay`;
 const OVERLAY_PREFIX = `${EXTENSION_ID}/overlay/`;
@@ -71,9 +71,10 @@ async function buildDoorOverlays(image: Image): Promise<Item[]> {
   if (!metadata) return [];
   const bounds = await OBR.scene.items.getItemBounds([image.id]);
   const sceneDpi = await OBR.scene.grid.getDpi();
-  const linkState: LinkOverlayState = !metadata.fogDoor
+  const sceneItems = metadata.links?.dynamicFog ? await OBR.scene.items.getItems([metadata.links.dynamicFog.fogItemId]) : [];
+  const linkState: LinkOverlayState = !metadata.links?.dynamicFog
     ? "unlinked"
-    : (await getProviderDoorState(metadata.fogDoor)).ok
+    : lookupDynamicFogDoor(sceneItems, metadata.links.dynamicFog).ok
       ? "linked"
       : "missing";
   const definitions = doorOverlayDefinitions(metadata.locked === true, linkState);
@@ -139,14 +140,14 @@ export async function handleDoorOverlayDoubleClick(event: ToolEvent): Promise<bo
     return true;
   }
 
-  if (metadata.fogDoor && (await getProviderDoorState(metadata.fogDoor)).ok) {
+  if (metadata.links?.dynamicFog) {
     await OBR.scene.items.updateItems([door.id], (items) => {
       const item = items[0];
       if (!item) return;
       const current = readDoorJamMetadata(item);
-      if (current) removeFogDoorLink(item, current);
+      if (current) removeDoorLink(item, current, "dynamicFog");
     });
-    await OBR.notification.show(`${providerName(metadata.fogDoor)} link removed. DoorJam artwork was preserved.`, "DEFAULT");
+    await OBR.notification.show(`${INTEGRATION_NAMES.dynamicFog} link removed. DoorJam artwork was preserved.`, "DEFAULT");
     return true;
   }
 

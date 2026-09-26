@@ -32,7 +32,8 @@ export function DoorRow({ door, busy, message, selected = false, operationDisabl
     if (event.key === "Escape") { cancelling.current = true; setName(door.name); event.currentTarget.blur(); }
   };
   const disabled = busy || renaming || Boolean(operationDisabledReason) || (door.state === "closed" && !door.hasOpenArtwork);
-  const detail = message || operationDisabledReason || (door.hasFogLink && !door.linkValid ? `${door.provider ?? "Fog"} link unavailable — operating standalone` : door.state === "closed" && !door.hasOpenArtwork ? "Set open artwork from the image menu" : door.provider ? `Linked to ${door.provider}` : undefined);
+  const integrations = door.integrations ?? (door.provider ? [door.provider] : []);
+  const detail = message || operationDisabledReason || door.linkWarning || (door.state === "closed" && !door.hasOpenArtwork ? "Set open artwork from the image menu" : integrations.length ? `Linked to ${integrations.join(" · ")}` : undefined);
 
   return <li data-door-id={door.id} className={`door-row${selected ? " selected" : ""}`} aria-current={selected ? "true" : undefined} onPointerEnter={() => void showDoorHighlight(door.id)} onPointerLeave={() => void clearDoorHighlight()}>
     <img className="door-thumbnail" src={door.thumbnailUrl} alt="" />

@@ -4,18 +4,18 @@ import { readToolPreferences } from "./preferences";
 
 describe("DoorJam tool preferences", () => {
   it("shows both provider tool sets by default", () => {
-    expect(readToolPreferences({})).toEqual({ dynamicFog: true, smoke: true });
+    expect(readToolPreferences({})).toEqual({ dynamicFog: true, smoke: true, stageManager: true });
   });
 
   it("allows either provider tool set to be hidden independently", () => {
     expect(readToolPreferences({ [DOORJAM_TOOL_PREFERENCES_KEY]: { dynamicFog: false, smoke: true } }))
-      .toEqual({ dynamicFog: false, smoke: true });
+      .toEqual({ dynamicFog: false, smoke: true, stageManager: true });
     expect(readToolPreferences({ [DOORJAM_TOOL_PREFERENCES_KEY]: { dynamicFog: true, smoke: false } }))
-      .toEqual({ dynamicFog: true, smoke: false });
+      .toEqual({ dynamicFog: true, smoke: false, stageManager: true });
   });
 
   it("fails open for malformed or partial metadata", () => {
     expect(readToolPreferences({ [DOORJAM_TOOL_PREFERENCES_KEY]: { dynamicFog: "no", smoke: false } }))
-      .toEqual({ dynamicFog: true, smoke: false });
+      .toEqual({ dynamicFog: true, smoke: false, stageManager: true });
   });
 });

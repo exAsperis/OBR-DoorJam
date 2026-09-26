@@ -1,7 +1,7 @@
 import type { Image } from "@owlbear-rodeo/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn(), nearest: vi.fn(), create: vi.fn(), creating: vi.fn() }));
+const mocks = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn(), nearest: vi.fn(), create: vi.fn(), creating: vi.fn(), set: vi.fn() }));
 const image = { id: "door", type: "IMAGE", image: { url: "closed.png" }, grid: {} } as unknown as Image;
 
 vi.mock("@owlbear-rodeo/sdk", () => ({
@@ -12,7 +12,7 @@ vi.mock("@owlbear-rodeo/sdk", () => ({
   } } },
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
-vi.mock("../dynamicFog/adapter", () => ({ findNearestDoor: mocks.nearest, createDynamicFogDoor: mocks.create }));
+vi.mock("../dynamicFog/adapter", () => ({ findNearestDoor: mocks.nearest, createDynamicFogDoor: mocks.create, setDoorState: mocks.set }));
 vi.mock("./artwork", () => ({ snapshotArtwork: vi.fn(() => ({ image: {}, grid: {} })) }));
 vi.mock("./metadata", () => ({ readDoorJamMetadata: mocks.read, writeDoorJamMetadata: mocks.write }));
 
@@ -22,6 +22,7 @@ describe("DoorJam linking", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.nearest.mockResolvedValue({ ref: { fogItemId: "fog", doorIndex: 0 }, distance: 5 });
+    mocks.set.mockResolvedValue({ ok: true, door: { open: false } });
   });
 
   it("reports that unified image setup is needed when a newly linked door has no open artwork", async () => {
@@ -40,7 +41,7 @@ describe("DoorJam linking", () => {
     mocks.create.mockResolvedValue({ ok: true, ref: { fogItemId: "fog", doorIndex: 2 } });
     mocks.read.mockReturnValue(null);
     const result = await createAndLinkDoor(image);
-    expect(mocks.write).toHaveBeenCalledWith(image, expect.objectContaining({ fogDoor: { provider: "dynamic-fog", fogItemId: "fog", doorIndex: 2 } }));
+    expect(mocks.write).toHaveBeenCalledWith(image, expect.objectContaining({ links: { dynamicFog: { fogItemId: "fog", doorIndex: 2 } } }));
     expect(result).toMatchObject({ ok: true, outcome: "created-new", needsOpenArtwork: true });
   });
 

@@ -1,12 +1,12 @@
 # DoorJam
 
-DoorJam turns ordinary Owlbear Rodeo image items into artwork-driven doors. Doors work on their own and can optionally synchronize with the official Dynamic Fog extension or Smoke & Spectre.
+DoorJam turns ordinary Owlbear Rodeo image items into artwork-driven doors. Each door may independently link to Dynamic Fog, Smoke & Spectre!, and one or more Stage Manager Elevators. These links coexist: one DoorJam door can control all three integrations at once.
 
 ## GM workflow
 
 1. Place a closed-door image, choose **Set Images** from its context menu or the DoorJam toolbar, then set its open artwork. The existing image becomes the closed artwork and the chosen asset becomes the open artwork.
 2. Switch to **Operate Door** and click the door image to open or close it with one click—even when the image is locked.
-3. Optionally use **Link Dynamic Fog Door** or **Link Smoke & Spectre Door**. DoorJam links a unique nearby door or attempts provider-specific creation when none exists.
+3. Optionally use **Link/Create Dynamic Fog Door**, **Link/Create Smoke & Spectre! Door**, or **Link Stage Manager Elevator**. Adding or replacing one integration preserves every other link.
 
 ### Editing a Dynamic Fog doorway
 
@@ -22,7 +22,13 @@ The editor supports Dynamic Fog lines, supported shapes, paths (including multip
 
 The context menu and toolbar expose the same DoorJam actions in the same order.
 
-While a fog-provider link is valid, that provider is authoritative and DoorJam mirrors changes made through it. If the link becomes unavailable, the image remains operable using its last displayed state. **Unlink Door** removes only the reference; **Remove Door** removes standalone DoorJam configuration while preserving the displayed image and underlying provider door.
+DoorJam's displayed open/closed state is canonical during DoorJam operations and is fanned out to every configured integration. External Dynamic Fog and Smoke changes may still drive DoorJam when the available fog providers agree; conflicting provider states leave DoorJam unchanged. If a link becomes unavailable, the image remains operable using its last displayed state.
+
+**Break Link** removes a sole integration immediately. When several links exist, it asks which connection to remove and preserves all other links, artwork, state, lock, and external provider items. **Remove Door** is available only for a standalone DoorJam door with no integration links.
+
+## Stage Manager support
+
+DoorJam uses Stage Manager's public Elevator API exclusively; it does not read or write Stage Manager's private metadata. Linking automatically selects the image itself when it is an Elevator, or the sole overlapping Elevator when unambiguous, and otherwise opens an Elevator chooser. The chooser supports toggling multiple Elevator links and remains open until explicitly closed. Opening a DoorJam door enables every linked Elevator; closing the door disables all of them. Stage Manager is one-way for state synchronization, so direct Elevator changes do not reverse-drive DoorJam.
 
 ## Smoke & Spectre support
 
@@ -43,6 +49,6 @@ By default, players can operate unlocked doors from the DoorJam tool, context me
 
 While the DoorJam tool is active for the GM, each configured door displays centered lock and Dynamic Fog link status glyphs. Double-click the lock glyph to toggle the door lock. Double-click the linked glyph to unlink it; double-click the unlinked glyph to link a nearby Dynamic Fog door or create one along an intersecting fog edge when no door is in range.
 
-The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.13.0.json`).
+The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.14.0.json`).
 
-Private provider metadata is isolated in `src/dynamicFog/adapter.ts` and `src/smoke/adapter.ts`. Neither provider exposes a formal cross-extension door API, so representation changes should remain confined to those adapters and their geometry helpers.
+Private fog-provider metadata is isolated in `src/dynamicFog/adapter.ts` and `src/smoke/adapter.ts`. Stage Manager communication is isolated in `src/stageManager/adapter.ts` and uses only its public request/result API.

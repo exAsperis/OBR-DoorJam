@@ -13,6 +13,8 @@ export default defineConfig({
         contextMenu: "context-menu.html",
         imageSettings: "image-settings.html",
         toolSettings: "tool-settings.html",
+        elevatorLink: "elevator-link.html",
+        breakLink: "break-link.html",
       },
     },
   },

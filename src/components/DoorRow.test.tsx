@@ -35,7 +35,7 @@ describe("DoorRow", () => {
   });
 
   it("keeps a broken Dynamic Fog link operable with a warning", () => {
-    const view = render(<DoorRow door={{ ...door, linkValid: false }} busy={false} onRename={vi.fn()} onToggle={vi.fn()} />);
+    const view = render(<DoorRow door={{ ...door, linkValid: false, linkWarning: "Dynamic Fog link unavailable — operating standalone" }} busy={false} onRename={vi.fn()} onToggle={vi.fn()} />);
     expect(view.getByText("Dynamic Fog link unavailable — operating standalone")).toBeTruthy();
     expect((view.getByRole("button", { name: "Open" }) as HTMLButtonElement).disabled).toBe(false);
   });

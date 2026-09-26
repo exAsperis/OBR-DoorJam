@@ -10,7 +10,7 @@ export async function openToolSettingsPopover(anchorElementId: string): Promise<
     id: TOOL_SETTINGS_POPOVER_ID,
     url: "/tool-settings.html",
     width: 320,
-    height: 242,
+    height: 304,
     anchorReference: "ELEMENT",
     anchorElementId,
     anchorOrigin: { horizontal: "RIGHT", vertical: "TOP" },

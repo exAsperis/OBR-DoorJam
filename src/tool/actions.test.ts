@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   updateItems: vi.fn(),
   removeMetadata: vi.fn(),
   removeFogLink: vi.fn(),
+  breakLink: vi.fn(),
   setLocked: vi.fn(),
   link: vi.fn(),
   getDoorState: vi.fn(),
@@ -26,10 +27,13 @@ vi.mock("../doorJam/control", () => ({ toggleLinkedDoorState: mocks.toggle, door
 vi.mock("../doorJam/linking", () => ({ linkNearbyDoorOrCreate: mocks.link }));
 vi.mock("../dynamicFog/adapter", () => ({ getDoorState: mocks.getDoorState }));
 vi.mock("../doorJam/imagesPopover", () => ({ openDoorImagesPopover: mocks.openImages }));
-vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata, removeFogDoorLink: mocks.removeFogLink, setDoorLocked: mocks.setLocked }));
+vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata, removeDoorJamMetadata: mocks.removeMetadata, countDoorLinks: (metadata: { links?: object }) => Object.keys(metadata.links ?? {}).length, setDoorLocked: mocks.setLocked }));
+vi.mock("../doorJam/breakLink", () => ({ breakDoorLinkInteractive: mocks.breakLink }));
+vi.mock("../stageManager/linking", () => ({ discoverAndLinkStageManager: vi.fn() }));
 vi.mock("../doorJam/settings", () => ({ getDoorJamSettings: vi.fn().mockResolvedValue({ playersCanOperate: true }), setPlayersCanOperate: vi.fn() }));
 
 import { DOOR_ACTION_SHORTCUTS, DOORJAM_TOOL_SHORTCUT, performDoorAction, PLAYER_OPERATION_SHORTCUT } from "./actions";
+import { DYNAMIC_FOG_EDITOR_SHORTCUT } from "./dynamicFogEditor";
 
 const RESERVED_SHORTCUTS: string[] = ["1", "2", "3", "4", "5", "6", "7", "-", "=", "W", "S", "F", "D", "M", "Q", "T", "H"];
 
@@ -43,7 +47,7 @@ describe("DoorJam tool modes", () => {
   });
 
   it("operates only configured image targets", async () => {
-    mocks.readMetadata.mockReturnValue({ fogDoor: {} });
+    mocks.readMetadata.mockReturnValue({ links: {} });
     mocks.toggle.mockResolvedValue({ ok: true });
     await performDoorAction("operate", image);
     expect(mocks.toggle).toHaveBeenCalledWith("door");
@@ -62,10 +66,10 @@ describe("DoorJam tool modes", () => {
   });
 
   it("unlinks a fog-backed door without removing DoorJam metadata", async () => {
-    const metadata = { fogDoor: { fogItemId: "fog", doorIndex: 0 } };
+    const metadata = { links: { dynamicFog: { fogItemId: "fog", doorIndex: 0 } } };
     mocks.readMetadata.mockReturnValue(metadata);
     await performDoorAction("unlink", image);
-    expect(mocks.removeFogLink).toHaveBeenCalledWith(image, metadata);
+    expect(mocks.breakLink).toHaveBeenCalledWith("door");
     expect(mocks.removeMetadata).not.toHaveBeenCalled();
   });
 
@@ -84,7 +88,7 @@ describe("DoorJam tool modes", () => {
   });
 
   it("does not reuse reserved or duplicate shortcuts", () => {
-    const shortcuts = [DOORJAM_TOOL_SHORTCUT, PLAYER_OPERATION_SHORTCUT, ...Object.values(DOOR_ACTION_SHORTCUTS)];
+    const shortcuts = [DOORJAM_TOOL_SHORTCUT, PLAYER_OPERATION_SHORTCUT, DYNAMIC_FOG_EDITOR_SHORTCUT, ...Object.values(DOOR_ACTION_SHORTCUTS)];
     expect(shortcuts.filter((shortcut) => RESERVED_SHORTCUTS.includes(shortcut))).toEqual([]);
     expect(new Set(shortcuts).size).toBe(shortcuts.length);
   });

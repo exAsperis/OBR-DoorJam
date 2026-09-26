@@ -32,21 +32,34 @@
       p { max-width: 590px; color: #d8c8b4; font-size: 18px; line-height: 1.6; }
       ol { margin: 30px 0; padding-left: 24px; color: #f3dfc4; line-height: 1.9; }
       a { color: #ffb347; }
+      .copy-url { display: inline-flex; align-items: center; gap: 12px; max-width: 100%; padding: 10px 12px; border: 1px solid rgba(255, 255, 255, 0.24); border-radius: 6px; background: rgba(30, 34, 49, 0.6); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+      .copy-url:hover { background: rgba(255, 255, 255, 0.12); }
+      .copy-url:focus-visible { outline: 2px solid #ffb347; outline-offset: 3px; }
+      .copy-url code { overflow-wrap: anywhere; }
+      .copy-url-label { flex-shrink: 0; color: #ffb347; font-size: 14px; }
+      .copy-status { min-height: 1.5em; margin: 4px 0 0; color: #d8c8b4; font-size: 14px; }
     </style>
   </head>
   <body>
     <main>
       
       <h1><span class="mark" aria-hidden="true"><img src="public/icon.svg" alt="DoorJam Logo" /></span> DoorJam</h1>
-      <p>An Owlbear Rodeo enhancement that turns ordinary door artwork into synchronized controls for <a href="https://extensions.owlbear.rodeo/dynamic-fog" target="_blank"><i>Dynamic Fog</i></a> and <a href="https://extensions.owlbear.rodeo/smoke" target="_blank"><i>Smoke &amp; Spectre!</i></a></p>
+      <p>An Owlbear Rodeo enhancement that turns ordinary door artwork into synchronized controls for <a href="https://extensions.owlbear.rodeo/dynamic-fog" target="_blank"><i>Dynamic Fog</i></a>, <a href="https://extensions.owlbear.rodeo/smoke" target="_blank"><i>Smoke &amp; Spectre!</i></a>, and <a href="https://obr-stage-manager.ex-asperis.com" target="_blank"><i>Stage Manager</i></a></p>
       <h2>Quick Start</h2>
-      <p><a href="https://github.com/exAsperis/OBR-DoorJam">Source and installation</a></p>
+      <p><a href="https://github.com/exAsperis/OBR-DoorJam">Source code</a></p>
+      <p>To install <i>DoorJam</i>:</p>
       <ol>
-        <li>Drag an image representing a closed door over a <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door.</li>
-        <li>Us the <i>DoorJam</i> tools, or right-click context menu, to link the door item to the nearest <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door.</li>
-        <li>Assign an image to represent the open state. Your <i>DoorJam</i> door is now linked to the fog or smoke door. You can operate the door from either the <i>DoorJam</i> tools or the linked door item.</li>
+        <li>Open the Owlbear Rodeo <i>Extras</i> menu, and select <i>Extensions</i>.</li>
+        <li>Click the <i>Add Extension</i> (+) button, and enter the following URL: <button class="copy-url" type="button" data-copy-url="https://doorjam.ex-asperis.com/manifest.json"><code>https://doorjam.ex-asperis.com/manifest.json</code><span class="copy-url-label">Copy</span></button><p class="copy-status" aria-live="polite"></p></li>
+        <li>Click <i>Add</i>.</li>
       </ol>
-      <p>Of course, you can use <i>DoorJam</i> without linking it to a fog or smoke door to create a simple, visual door open/close effect. In this case, you're simply switching between two images, so you're not necessarily limited to "doors".</p>
+      <p>To use <i>DoorJam</i>:</p>
+      <ol>
+        <li>Drag an image representing a closed door over a <i>Dynamic Fog</i> or <i>Smoke &amp; Spectre!</i> door or a <i>Stage Manager</i> elevator.</li>
+        <li>Use the <i>DoorJam</i> tools, or right-click context menu, to link the door item to the nearest door or elevator.</li>
+        <li>Assign an image to represent the open state. Your <i>DoorJam</i> door is now linked to the door or elevator. You can operate doors from either the <i>DoorJam</i> tools or the linked door item. Elevators are enabled or disabled based on the door's state.</li>
+      </ol>
+      <p>Of course, you can use <i>DoorJam</i> without linking it to a door or elevator to create a simple, visual door open/close effect. In this case, you're simply switching between two images, so you're not necessarily limited to "doors".</p>
       <h2>Tool Modes</h2>
 
       <div class="toolbar">
@@ -59,6 +72,7 @@
         <a href="#tool-link-fog" aria-label="Link/Create Dynamic Fog Door (Y)"><span class="tool-glyph" aria-hidden="true" title="Link/Create Dynamic Fog Door (Y)"><img src="/tool-link.svg" alt="" /></span></a>
         <a href="#tool-edit-dynamic-fog" aria-label="Edit Dynamic Fog Door (E)"><span class="tool-glyph" aria-hidden="true" title="Edit Dynamic Fog Door (E)"><img src="/tool-edit-dynamic-fog.svg" alt="" /></span></a>
         <a href="#tool-link-smoke" aria-label="Link/Create Smoke &amp; Spectre! Door (K)"><span class="tool-glyph" aria-hidden="true" title="Link/Create Smoke &amp; Spectre! Door (K)"><img src="/tool-link-smoke.svg" alt="" /></span></a>
+        <a href="#tool-link-stage-manager" aria-label="Link Stage Manager Elevator (U)"><span class="tool-glyph" aria-hidden="true" title="Link Stage Manager Elevator (U)"><img src="/tool-link-stage-manager.svg" alt="" /></span></a>
         <a href="#tool-unlink" aria-label="Break Link (B)"><span class="tool-glyph" aria-hidden="true" title="Break Link (B)"><img src="/tool-unlink.svg" alt="" /></span></a>
         <a href="#tool-remove" aria-label="Remove Door (R)"><span class="tool-glyph" aria-hidden="true" title="Remove Door (R)"><img src="/remove-door.svg" alt="" /></span></a>
         <hr class="MuiDivider-root MuiDivider-middle MuiDivider-vertical MuiDivider-flexItem css-1lh99xa">
@@ -116,6 +130,13 @@
             <p>Clicking an item with this tool will attempt to link it to an existing <i>Smoke &amp; Spectre!</i> door, or create a new <i>Smoke &amp; Spectre!</i> door where the image intersects with a straight, unbroken Obstruction Line. This enables synchronized operation between the door and the obstruction line.</p>
           </div>
         </div>
+        <div class="tool-card" id="tool-link-stage-manager">
+          <span class="tool-glyph" aria-hidden="true"><img src="/tool-link-stage-manager.svg" alt="Link Stage Manager Elevator (U)" /></span>
+          <div>
+            <h3>Link Stage Manager Elevator (U)</h3>
+            <p>Clicking an item with this tool will open a dialog to link it to one or more existing <i>Stage Manager</i> elevators. Closing the door will disable all linked elevators, and opening the door will enable them.</p>
+          </div>
+        </div>
         <div class="tool-card" id="tool-unlink">
           <span class="tool-glyph" aria-hidden="true"><img src="/tool-unlink.svg" alt="Break Link (B)" /></span>
           <div>
@@ -156,5 +177,21 @@
       <p>DoorJam is a free, open-source enhancement for Owlbear Rodeo, created by <a href="https://www.ex-asperis.com"><span class="logo"><img src="https://www.ex-asperis.com/logo.svg" /></span> ex Asperis Creations</a></p>
       <p>Neither DoorJam nor ex Asperis Creations are affiliated with Owlbear Rodeo, Battle-System or the respective developers. All trademarks and copyrights are the property of their respective owners.</p>
     </main>
+    <script>
+      document.querySelectorAll("[data-copy-url]").forEach((button) => {
+        const label = button.querySelector(".copy-url-label");
+        const status = button.parentElement.querySelector(".copy-status");
+        button.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(button.dataset.copyUrl);
+            label.textContent = "Copied";
+            status.textContent = "Install URL copied to clipboard.";
+          } catch {
+            label.textContent = "Copy failed";
+            status.textContent = "Could not copy automatically. Select and copy the URL above.";
+          }
+        });
+      });
+    </script>
   </body>
 </html>

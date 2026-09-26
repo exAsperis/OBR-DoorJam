@@ -1,6 +1,6 @@
 import OBR, { isImage, type Item } from "@owlbear-rodeo/sdk";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { lookupProviderDoor, providerName } from "../doorJam/providers";
+import { INTEGRATION_NAMES, lookupDynamicFogDoor, lookupSmokeLinkedDoor, resolveFogProviderState } from "../doorJam/providers";
 import { readDoorJamMetadata } from "../doorJam/metadata";
 import { readDoorJamSettings } from "../doorJam/settings";
 
@@ -9,8 +9,11 @@ export interface DoorListEntry {
   name: string;
   thumbnailUrl: string;
   state: "open" | "closed" | null;
-  linkValid: boolean;
-  hasFogLink: boolean;
+  integrations?: string[];
+  linkWarning?: string;
+  /** Legacy view fields retained for component consumers during migration. */
+  linkValid?: boolean;
+  hasFogLink?: boolean;
   provider?: string | null;
   hasOpenArtwork: boolean;
   locked: boolean;
@@ -20,11 +23,22 @@ export function buildDoorListEntries(items: Item[]): DoorListEntry[] {
   return items.filter(isImage).flatMap((image) => {
     const metadata = readDoorJamMetadata(image);
     if (!metadata) return [];
-    const linkedDoor = metadata.fogDoor ? lookupProviderDoor(items, metadata.fogDoor) : null;
-    const state: DoorListEntry["state"] = linkedDoor?.ok ? (linkedDoor.open ? "open" : "closed") : metadata.renderedState;
+    const resolved = resolveFogProviderState(items, metadata);
+    const state: DoorListEntry["state"] = resolved?.ok ? (resolved.open ? "open" : "closed") : metadata.renderedState;
+    const integrations = [
+      metadata.links?.dynamicFog ? INTEGRATION_NAMES.dynamicFog : null,
+      metadata.links?.smoke ? INTEGRATION_NAMES.smoke : null,
+      metadata.links?.stageManager ? INTEGRATION_NAMES.stageManager : null,
+    ].filter((name): name is string => Boolean(name));
+    const stale = [
+      metadata.links?.dynamicFog && !lookupDynamicFogDoor(items, metadata.links.dynamicFog).ok ? INTEGRATION_NAMES.dynamicFog : null,
+      metadata.links?.smoke && !lookupSmokeLinkedDoor(items, metadata.links.smoke).ok ? INTEGRATION_NAMES.smoke : null,
+    ].filter((name): name is string => Boolean(name));
     return [{ id: image.id, name: image.name, thumbnailUrl: image.image.url,
       state,
-      linkValid: !metadata.fogDoor || Boolean(linkedDoor?.ok), hasFogLink: Boolean(metadata.fogDoor), provider: metadata.fogDoor ? providerName(metadata.fogDoor) : null, hasOpenArtwork: Boolean(metadata.openImage), locked: metadata.locked === true }];
+      integrations, linkWarning: stale.length ? `${stale.join(" and ")} link unavailable — operating standalone` : undefined,
+      linkValid: stale.length === 0, hasFogLink: Boolean(metadata.links?.dynamicFog || metadata.links?.smoke),
+      provider: integrations[0] ?? null, hasOpenArtwork: Boolean(metadata.openImage), locked: metadata.locked === true }];
   }).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) || a.id.localeCompare(b.id));
 }
 
