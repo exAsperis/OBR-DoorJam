@@ -1,7 +1,7 @@
 import type { Image } from "@owlbear-rodeo/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn(), nearest: vi.fn(), create: vi.fn(), creating: vi.fn(), set: vi.fn() }));
+const mocks = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn(), nearest: vi.fn(), automatic: vi.fn(), create: vi.fn(), creating: vi.fn(), set: vi.fn() }));
 const image = { id: "door", type: "IMAGE", image: { url: "closed.png" }, grid: {} } as unknown as Image;
 
 vi.mock("@owlbear-rodeo/sdk", () => ({
@@ -12,7 +12,7 @@ vi.mock("@owlbear-rodeo/sdk", () => ({
   } } },
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
-vi.mock("../dynamicFog/adapter", () => ({ findNearestDoor: mocks.nearest, createDynamicFogDoor: mocks.create, setDoorState: mocks.set }));
+vi.mock("../dynamicFog/adapter", () => ({ findNearestDoor: mocks.nearest, findAutomaticDoor: mocks.automatic, createDynamicFogDoor: mocks.create, setDoorState: mocks.set }));
 vi.mock("./artwork", () => ({ snapshotArtwork: vi.fn(() => ({ image: {}, grid: {} })) }));
 vi.mock("./metadata", () => ({ readDoorJamMetadata: mocks.read, writeDoorJamMetadata: mocks.write }));
 
@@ -22,6 +22,7 @@ describe("DoorJam linking", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.nearest.mockResolvedValue({ ref: { fogItemId: "fog", doorIndex: 0 }, distance: 5 });
+    mocks.automatic.mockResolvedValue({ ok: false, reason: "none" });
     mocks.set.mockResolvedValue({ ok: true, door: { open: false } });
   });
 
@@ -45,12 +46,9 @@ describe("DoorJam linking", () => {
     expect(result).toMatchObject({ ok: true, outcome: "created-new", needsOpenArtwork: true });
   });
 
-  it("falls back to creating a fog door when none is within range", async () => {
-    mocks.nearest.mockResolvedValue({ ref: { fogItemId: "fog", doorIndex: 0 }, distance: 500 });
-    mocks.create.mockResolvedValue({ ok: true, ref: { fogItemId: "fog", doorIndex: 3 } });
-    mocks.read.mockReturnValue({ openImage: {}, closedImage: {}, renderedState: "closed" });
-    expect(await linkNearbyDoorOrCreate(image, mocks.creating)).toMatchObject({ ok: true, outcome: "created-new" });
-    expect(mocks.creating).toHaveBeenCalledOnce();
-    expect(mocks.create).toHaveBeenCalled();
+  it("offers a choice and does not create when automatic matching fails", async () => {
+    expect(await linkNearbyDoorOrCreate(image, mocks.creating)).toMatchObject({ ok: false, action: "choose", reason: "none" });
+    expect(mocks.creating).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });

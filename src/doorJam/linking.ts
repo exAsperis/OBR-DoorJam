@@ -1,25 +1,32 @@
 import OBR, { isImage, type Image } from "@owlbear-rodeo/sdk";
 import { LINK_DISTANCE_THRESHOLD } from "../constants";
-import { createDynamicFogDoor, findNearestDoor } from "../dynamicFog/adapter";
+import { createDynamicFogDoor, findAutomaticDoor, findNearestDoor } from "../dynamicFog/adapter";
 import { chooseSmokeDoor, createSmokeDoor } from "../smoke/adapter";
 import { snapshotArtwork } from "./artwork";
 import { readDoorJamMetadata, writeDoorJamMetadata, type DynamicFogLink, type SmokeLink } from "./metadata";
 import { setDynamicFogDoorState, setSmokeLinkedDoorState } from "./providers";
 import { withDoorSynchronizationSuppressed } from "./synchronization";
 
-export type LinkResult = { ok: true; outcome: "linked-existing" | "created-new"; distance: number; doorCount: number; needsOpenArtwork: boolean; warning?: string } | { ok: false; message: string };
+export type LinkResult =
+  | { ok: true; outcome: "linked-existing" | "created-new"; distance: number; doorCount: number; needsOpenArtwork: boolean; warning?: string }
+  | { ok: false; message: string; action?: "choose"; reason?: "none" | "ambiguous-overlap" | "ambiguous-nearby" | "invalid-geometry" };
 export type DoorProvider = "dynamic-fog" | "smoke";
 
 export async function linkNearbyDoorOrCreate(image: Image, onCreateAttempt?: () => unknown | Promise<unknown>, provider: DoorProvider = "dynamic-fog"): Promise<LinkResult> {
   if (provider === "smoke") return linkSmokeDoorOrCreate(image, onCreateAttempt);
   const bounds = await OBR.scene.items.getItemBounds([image.id]);
-  const nearest = await findNearestDoor({ x: bounds.center.x, y: bounds.center.y });
-  if (nearest && nearest.distance <= LINK_DISTANCE_THRESHOLD) return linkNearestDoor(image);
-  await onCreateAttempt?.();
-  return createAndLinkDoor(image);
+  const match = await findAutomaticDoor(bounds, LINK_DISTANCE_THRESHOLD);
+  if (match.ok) return linkDynamicFogDoor(image, match.door.ref, match.door.distance);
+  const messages = {
+    "ambiguous-overlap": "More than one Dynamic Fog door matches this image. Click the door you want to link.",
+    "ambiguous-nearby": "More than one Dynamic Fog door is plausibly near this image. Click the door you want to link.",
+    "invalid-geometry": "Dynamic Fog door data was found, but some geometry could not be interpreted. Select the intended door manually or create a new one.",
+    none: "No suitable existing Dynamic Fog door was found. Select an existing door, create a new one, or cancel.",
+  } as const;
+  return { ok: false, action: "choose", reason: match.reason, message: messages[match.reason] };
 }
 
-async function saveLink(image: Image, kind: "dynamicFog" | "smoke", link: DynamicFogLink | SmokeLink): Promise<{ needsOpenArtwork: boolean; warning?: string }> {
+export async function saveLink(image: Image, kind: "dynamicFog" | "smoke", link: DynamicFogLink | SmokeLink): Promise<{ needsOpenArtwork: boolean; warning?: string }> {
   return withDoorSynchronizationSuppressed(image.id, async () => {
   let needsOpenArtwork = true;
   let desiredOpen = false;
@@ -41,6 +48,11 @@ async function saveLink(image: Image, kind: "dynamicFog" | "smoke", link: Dynami
     return { needsOpenArtwork, warning: "update-failed" };
   }
   });
+}
+
+export async function linkDynamicFogDoor(image: Image, ref: DynamicFogLink, distance = 0): Promise<LinkResult> {
+  const saved = await saveLink(image, "dynamicFog", { fogItemId: String(ref.fogItemId), doorIndex: Number(ref.doorIndex) });
+  return { ok: true, outcome: "linked-existing", distance, doorCount: 1, ...saved };
 }
 
 export async function linkSmokeDoorOrCreate(image: Image, onCreateAttempt?: () => unknown | Promise<unknown>): Promise<LinkResult> {

@@ -1,0 +1,6 @@
+.choice-panel { display: grid; gap: 10px; padding: 14px; }
+.choice-panel header span { color: var(--obr-text-secondary, #aaa); font-size: 12px; }
+.choice-panel h1 { font-size: 18px; margin: 2px 0; }
+.choice-panel p { margin: 0 0 4px; color: var(--obr-text-secondary, #aaa); }
+.choice-panel button { min-height: 34px; }
+.choice-panel .cancel { opacity: .8; }

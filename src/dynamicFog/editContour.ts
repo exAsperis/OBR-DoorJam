@@ -1,7 +1,7 @@
-import CanvasKitInit, { type CanvasKit, type ContourMeasure, type Path as SkPath } from "canvaskit-wasm";
-import wasmUrl from "canvaskit-wasm/bin/canvaskit.wasm?url";
-import { Command, MathM, isCurve, isLine, isPath, isShape, type Item, type Vector2 } from "@owlbear-rodeo/sdk";
+import { type CanvasKit, type ContourMeasure } from "canvaskit-wasm";
+import { MathM, isCurve, isLine, isPath, isShape, type Item, type Vector2 } from "@owlbear-rodeo/sdk";
 import type { ContourMarker } from "./types";
+import { drawingToSkPath, getCanvasKit } from "./geometry";
 
 export interface EditableContour {
   index: number;
@@ -10,57 +10,6 @@ export interface EditableContour {
   project(worldPosition: Vector2): { distance: number; worldPosition: Vector2; worldError: number };
   segment(startDistance: number, endDistance: number): Vector2[];
   dispose(): void;
-}
-
-let canvasKitPromise: Promise<CanvasKit> | undefined;
-const getCanvasKit = () => canvasKitPromise ??= CanvasKitInit({ locateFile: () => wasmUrl });
-
-function controlPoints(p0: Vector2, p1: Vector2, p2: Vector2, tension: number): [Vector2, Vector2] {
-  const d01 = Math.hypot(p1.x - p0.x, p1.y - p0.y);
-  const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-  const total = d01 + d12;
-  if (total <= 0) return [{ ...p0 }, { ...p0 }];
-  const dx = p2.x - p0.x;
-  const dy = p2.y - p0.y;
-  const a = tension * d01 / total;
-  const b = tension * d12 / total;
-  return [{ x: p1.x - dx * a, y: p1.y - dy * a }, { x: p1.x + dx * b, y: p1.y + dy * b }];
-}
-
-function addCurve(path: SkPath, points: Vector2[], tension: number, closed: boolean) {
-  if (!points.length) return;
-  path.moveTo(points[0].x, points[0].y);
-  if (tension === 0 || points.length <= 2) {
-    for (const point of points.slice(1)) path.lineTo(point.x, point.y);
-  } else {
-    const controls = points.map((point, index) => controlPoints(points[(index - 1 + points.length) % points.length], point, points[(index + 1) % points.length], tension));
-    if (closed) {
-      for (let index = 0; index < points.length; index += 1) {
-        const next = (index + 1) % points.length;
-        path.cubicTo(controls[index][1].x, controls[index][1].y, controls[next][0].x, controls[next][0].y, points[next].x, points[next].y);
-      }
-    } else {
-      path.quadTo(controls[1][0].x, controls[1][0].y, points[1].x, points[1].y);
-      for (let index = 1; index < points.length - 2; index += 1) path.cubicTo(controls[index][1].x, controls[index][1].y, controls[index + 1][0].x, controls[index + 1][0].y, points[index + 1].x, points[index + 1].y);
-      if (points.length > 2) path.quadTo(controls.at(-2)![1].x, controls.at(-2)![1].y, points.at(-1)!.x, points.at(-1)!.y);
-    }
-  }
-  if (closed) path.close();
-}
-
-function itemPath(ck: CanvasKit, item: Item): SkPath | null {
-  if (isPath(item)) return ck.Path.MakeFromCmds(item.commands.flat());
-  const path = new ck.Path();
-  if (isLine(item)) { path.moveTo(item.startPosition.x, item.startPosition.y); path.lineTo(item.endPosition.x, item.endPosition.y); }
-  else if (isCurve(item)) addCurve(path, item.points, item.style.tension, item.style.fillOpacity > 0 || Boolean(item.style.closed));
-  else if (isShape(item)) {
-    if (item.shapeType === "RECTANGLE") path.addRect(ck.XYWHRect(0, 0, item.width, item.height));
-    else if (item.shapeType === "CIRCLE") path.addOval(ck.XYWHRect(-item.width / 2, -item.height / 2, item.width, item.height));
-    else if (item.shapeType === "TRIANGLE") { path.moveTo(0, 0); path.lineTo(item.width / 2, item.height); path.lineTo(-item.width / 2, item.height); path.close(); }
-    else if (item.shapeType === "HEXAGON") { const r = Math.min(item.width, item.height) / 2; path.addPoly(Array.from({ length: 12 }, (_, i) => { const a = -Math.PI / 2 + Math.floor(i / 2) * Math.PI / 3; return i % 2 ? Math.sin(a) * r : Math.cos(a) * r; }), true); }
-    else { path.delete(); return null; }
-  } else { path.delete(); return null; }
-  return path;
 }
 
 function toWorld(item: Item, local: Vector2): Vector2 {
@@ -75,7 +24,7 @@ export async function getEditableContour(item: Item, marker: ContourMarker): Pro
 
 export function createEditableContour(ck: CanvasKit, item: Item, marker: ContourMarker): EditableContour | null {
   if (!Number.isInteger(marker.index) || marker.index < 0) return null;
-  const path = itemPath(ck, item);
+  const path = drawingToSkPath(ck, item);
   if (!path) return null;
   const iterator = new ck.ContourMeasureIter(path, false, 1);
   let measure: ContourMeasure | null = iterator.next();

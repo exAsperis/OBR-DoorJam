@@ -14,6 +14,8 @@ import { getToolPreferences, readToolPreferences, type DoorJamToolPreferences } 
 import { openToolSettingsPopover, TOOL_SETTINGS_ACTION_ID } from "./settingsPopover";
 import { DYNAMIC_FOG_EDITOR_MODE_ID, setupDynamicFogEditorMode } from "./dynamicFogEditor";
 import { DOORJAM_TOOL_ID, modeId } from "./ids";
+import { DYNAMIC_FOG_LINK_CHOICE_CHANNEL, openDynamicFogLinkPopover } from "../doorJam/dynamicFogLinkPopover";
+import { beginDynamicFogSelection, setupDynamicFogSelectionMode } from "./dynamicFogSelection";
 
 export { DOORJAM_TOOL_ID, modeId } from "./ids";
 export const DOORJAM_TOOL_SHORTCUT = "J";
@@ -59,10 +61,16 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     const smoke = action === "linkSmoke";
     try {
       const result = await linkNearbyDoorOrCreate(image, () => notify(`No existing ${smoke ? "Smoke & Spectre" : "Dynamic Fog"} door found in range. Attempting safe creation.`), smoke ? "smoke" : "dynamic-fog");
-      if (!result.ok) { await notify(result.message, "ERROR"); return; }
+      if (!result.ok) {
+        if (!smoke && result.action === "choose") { await openDynamicFogLinkPopover(image.id, result.reason ?? "none"); return; }
+        await notify(result.message, "ERROR"); return;
+      }
       await notify(result.warning ? `Door linked, but ${smoke ? "Smoke & Spectre!" : "Dynamic Fog"} could not synchronize its initial state.` : result.outcome === "linked-existing" ? `Door image linked to ${smoke ? "Smoke & Spectre" : "Dynamic Fog"}.` : `New ${smoke ? "Smoke & Spectre" : "Dynamic Fog"} door created and linked.`, result.warning ? "ERROR" : "DEFAULT");
       if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
-    } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
+    } catch (error) {
+      console.error("DoorJam link operation failed", error);
+      await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR");
+    }
     return;
   }
   if (action === "linkStageManager") {
@@ -148,6 +156,14 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
   // normalized fail-open preferences so upgrades gain the Stage Manager key.
   await OBR.tool.setMetadata(DOORJAM_TOOL_ID, { [DOORJAM_TOOL_PREFERENCES_KEY]: preferences });
   let removeDynamicFogEditor: (() => void) | undefined;
+  const removeDynamicFogSelection = role === "GM" ? await setupDynamicFogSelectionMode() : undefined;
+  const removeDynamicFogChoice = role === "GM" ? OBR.broadcast.onMessage(DYNAMIC_FOG_LINK_CHOICE_CHANNEL, (event) => {
+    const data = event.data as { imageId?: unknown; choice?: unknown; reason?: unknown };
+    if (data?.choice === "select" && typeof data.imageId === "string" && data.imageId.length <= 200) {
+      const ambiguous = typeof data.reason === "string" && data.reason.startsWith("ambiguous");
+      void beginDynamicFogSelection(data.imageId, ambiguous ? "More than one Dynamic Fog door matches this image. Click the door you want to link." : undefined);
+    }
+  }) : undefined;
   for (const action of actions) {
     if (role !== "GM" && action !== "operate") continue;
     const definition = DOOR_ACTIONS[action];
@@ -187,6 +203,7 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
   }
   return () => {
     removeDynamicFogEditor?.();
+    removeDynamicFogSelection?.(); removeDynamicFogChoice?.();
     for (const action of actions) if (role === "GM" || action === "operate") void OBR.tool.removeMode(modeId(action));
     removeSettings?.();
     if (role === "GM") void OBR.tool.removeAction(PLAYER_OPERATION_ACTION_ID);

@@ -11,7 +11,82 @@ import {
   type PathCommand,
   type Vector2,
 } from "@owlbear-rodeo/sdk";
-import type { ContourMarker } from "./types";
+import CanvasKitInit, { type CanvasKit, type ContourMeasure, type Path as SkPath } from "canvaskit-wasm";
+import wasmUrl from "canvaskit-wasm/bin/canvaskit.wasm?url";
+import type { ContourMarker, DynamicFogDoorGeometry } from "./types";
+
+declare const process: { cwd(): string; versions?: { node?: string } } | undefined;
+
+let canvasKitPromise: Promise<CanvasKit> | undefined;
+export const getCanvasKit = () => canvasKitPromise ??= CanvasKitInit({ locateFile: () =>
+  typeof process !== "undefined" && process.versions?.node ? `${process.cwd()}${wasmUrl}` : wasmUrl });
+
+function cardinalControlPoints(p0: Vector2, p1: Vector2, p2: Vector2, tension: number): [Vector2, Vector2] {
+  const d01 = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+  const d12 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+  const total = d01 + d12;
+  if (total <= 0) return [{ ...p0 }, { ...p0 }];
+  const delta = { x: p2.x - p0.x, y: p2.y - p0.y };
+  return [
+    { x: p1.x - delta.x * tension * d01 / total, y: p1.y - delta.y * tension * d01 / total },
+    { x: p1.x + delta.x * tension * d12 / total, y: p1.y + delta.y * tension * d12 / total },
+  ];
+}
+
+/** Exact port of Dynamic Fog's CardinalSpline.addToSkPath. */
+function addCardinalSpline(path: SkPath, points: Vector2[], tension: number, closed: boolean): void {
+  if (!points.length) return;
+  path.moveTo(points[0].x, points[0].y);
+  if (tension !== 0 && points.length > 2) {
+    const expand = (values: Vector2[]) => {
+      const result: Vector2[] = [];
+      for (let i = 1; i < values.length - 1; i += 1) {
+        const [a, b] = cardinalControlPoints(values[i - 1], values[i], values[i + 1], tension);
+        if (!Number.isNaN(a.x)) result.push(a, values[i], b);
+      }
+      return result;
+    };
+    let controls: Vector2[];
+    if (closed) {
+      const first = cardinalControlPoints(points.at(-1)!, points[0], points[1], tension);
+      const last = cardinalControlPoints(points.at(-2)!, points.at(-1)!, points[0], tension);
+      controls = [first[1], ...expand(points), last[0], points.at(-1)!, last[1], first[0], points[0]];
+    } else controls = expand(points);
+    if (!closed && controls.length > 1) path.quadTo(controls[0].x, controls[0].y, controls[1].x, controls[1].y);
+    for (let i = closed ? 0 : 2; i < controls.length - 1; i += 3) {
+      const a = controls[i], b = controls[i + 1], end = controls[i + 2];
+      if ([a.x, a.y, b.x, b.y, end.x, end.y].every(Number.isFinite)) path.cubicTo(a.x, a.y, b.x, b.y, end.x, end.y);
+    }
+    if (!closed && controls.length) {
+      const control = controls.at(-1)!; const end = points.at(-1)!;
+      path.quadTo(control.x, control.y, end.x, end.y);
+    }
+  } else for (const value of points.slice(1)) path.lineTo(value.x, value.y);
+  if (closed) path.close();
+}
+
+/** Build the same local-space CanvasKit path used by Dynamic Fog 0.39.x. */
+export function drawingToSkPath(ck: CanvasKit, item: Item): SkPath | null {
+  if (isPath(item)) {
+    const path = ck.Path.MakeFromCmds(item.commands.flat());
+    if (path) path.setFillType(item.fillRule === "nonzero" ? ck.FillType.Winding : ck.FillType.EvenOdd);
+    return path;
+  }
+  const path = new ck.Path();
+  if (isLine(item)) { path.moveTo(item.startPosition.x, item.startPosition.y); path.lineTo(item.endPosition.x, item.endPosition.y); }
+  else if (isCurve(item)) addCardinalSpline(path, item.points, item.style.tension, item.style.fillOpacity > 0 || Boolean(item.style.closed));
+  else if (isShape(item)) {
+    if (item.shapeType === "RECTANGLE") path.addRect(ck.XYWHRect(0, 0, item.width, item.height));
+    else if (item.shapeType === "CIRCLE") path.addOval(ck.XYWHRect(-item.width / 2, -item.height / 2, item.width, item.height));
+    else if (item.shapeType === "TRIANGLE") { path.moveTo(0, 0); path.lineTo(item.width / 2, item.height); path.lineTo(-item.width / 2, item.height); path.close(); }
+    else if (item.shapeType === "HEXAGON") {
+      const radius = Math.min(item.width, item.height) / 2;
+      for (let i = 0; i < 6; i += 1) { const angle = -Math.PI / 2 + i * Math.PI / 3; const p = { x: Math.cos(angle) * radius, y: Math.sin(angle) * radius }; if (i) path.lineTo(p.x, p.y); else path.moveTo(p.x, p.y); }
+      path.close();
+    } else { path.delete(); return null; }
+  } else { path.delete(); return null; }
+  return path;
+}
 
 function point(command: PathCommand): Vector2 | null {
   switch (command[0]) {
@@ -287,4 +362,66 @@ export function doorMidpoint(item: Item, start: ContourMarker, end: ContourMarke
   const a = markerPosition(item, start);
   const b = markerPosition(item, end);
   return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } : null;
+}
+
+function boundsOf(points: Vector2[]): BoundingBox {
+  const xs = points.map((point) => point.x); const ys = points.map((point) => point.y);
+  const min = { x: Math.min(...xs), y: Math.min(...ys) }; const max = { x: Math.max(...xs), y: Math.max(...ys) };
+  return { min, max, width: max.x - min.x, height: max.y - min.y, center: { x: (min.x + max.x) / 2, y: (min.y + max.y) / 2 } };
+}
+
+function contourMeasure(ck: CanvasKit, path: SkPath, index: number): ContourMeasure | null {
+  const iterator = new ck.ContourMeasureIter(path, false, 1);
+  let measure: ContourMeasure | null = iterator.next();
+  for (let current = 0; measure && current < index; current += 1) { measure.delete(); measure = iterator.next(); }
+  iterator.delete();
+  return measure;
+}
+
+export async function getDoorWorldGeometry(item: Item, start: ContourMarker, end: ContourMarker): Promise<DynamicFogDoorGeometry | null> {
+  if (start.index !== end.index || !Number.isInteger(start.index) || start.index < 0) return null;
+  const ck = await getCanvasKit(); const path = drawingToSkPath(ck, item);
+  if (!path) return null;
+  let measure: ContourMeasure | null = null;
+  try {
+    measure = contourMeasure(ck, path, start.index);
+    if (!measure) return null;
+    const length = measure.length(); const from = Math.min(start.distance, end.distance); const to = Math.max(start.distance, end.distance);
+    if (![length, from, to].every(Number.isFinite) || from < 0 || to > length || to <= from) return null;
+    const count = Math.max(2, Math.ceil((to - from) / 2) + 1);
+    const worldPoints = Array.from({ length: count }, (_, index) => {
+      const position = measure!.getPosTan(from + (to - from) * index / (count - 1));
+      return toWorld(item, { x: position[0], y: position[1] });
+    });
+    if (start.distance > end.distance) worldPoints.reverse();
+    const first = worldPoints[0], last = worldPoints.at(-1)!;
+    const middlePosition = measure.getPosTan((from + to) / 2);
+    return { start: first, end: last, midpoint: toWorld(item, { x: middlePosition[0], y: middlePosition[1] }), worldPoints, bounds: boundsOf(worldPoints) };
+  } finally { measure?.delete(); path.delete(); }
+}
+
+/** CanvasKit-compatible creation spans. Marker distances remain local contour distances. */
+export async function canvasContourSpansWithinBounds(item: Item, bounds: BoundingBox): Promise<ContourSpan[]> {
+  const ck = await getCanvasKit(); const path = drawingToSkPath(ck, item);
+  if (!path) return [];
+  const spans: ContourSpan[] = []; const iterator = new ck.ContourMeasureIter(path, false, 1);
+  let measure: ContourMeasure | null = iterator.next(); let contourIndex = 0;
+  try {
+    while (measure) {
+      const length = measure.length(); const step = Math.max(0.5, Math.min(2, length / 256 || 0.5));
+      let previousDistance = 0; let raw = measure.getPosTan(0); let previous = toWorld(item, { x: raw[0], y: raw[1] }); let active: ContourSpan | null = null;
+      for (let distance = Math.min(step, length); previousDistance < length; distance = Math.min(distance + step, length)) {
+        raw = measure.getPosTan(distance); const current = toWorld(item, { x: raw[0], y: raw[1] }); const clipped = clipSegmentToBounds(previous, current, bounds);
+        if (clipped) {
+          const [a, b] = clipped; const startDistance = previousDistance + (distance - previousDistance) * a; const endDistance = previousDistance + (distance - previousDistance) * b;
+          const worldStart = lerp(previous, current, a); const worldEnd = lerp(previous, current, b); const worldLength = Math.hypot(worldEnd.x - worldStart.x, worldEnd.y - worldStart.y);
+          if (active && Math.abs(active.end.distance - startDistance) < 1e-4) { active.end.distance = endDistance; active.worldLength += worldLength; active.worldPoints.push(worldEnd); }
+          else { active = { start: { index: contourIndex, distance: startDistance }, end: { index: contourIndex, distance: endDistance }, worldLength, worldPoints: [worldStart, worldEnd] }; spans.push(active); }
+        } else active = null;
+        previous = current; previousDistance = distance; if (distance === length) break;
+      }
+      measure.delete(); measure = iterator.next(); contourIndex += 1;
+    }
+  } finally { measure?.delete(); iterator.delete(); path.delete(); }
+  return spans.filter((span) => span.worldLength > 1);
 }

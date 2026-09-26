@@ -12,7 +12,8 @@ vi.mock("@owlbear-rodeo/sdk", async (original) => {
 
 import {
   DYNAMIC_FOG_DOORS_KEY, createDynamicFogDoor, enumerateDoors, findDoorCandidates, getDoorState,
-  lookupDoor, parseDynamicFogDoors, selectDoorCandidate, setDoorState, updateDoorGeometry,
+  lookupDoor, parseDynamicFogDoors, selectDoorCandidate, setDoorState, updateDoorGeometry, chooseAutomaticDoor,
+  resolveManualDoorTarget, DYNAMIC_FOG_DOOR_INDEX_KEY,
 } from "./adapter";
 
 function fogPath(metadataValue: unknown): Path {
@@ -74,19 +75,21 @@ describe("Dynamic Fog adapter", () => {
     });
   });
 
-  it("rejects malformed external metadata without throwing", () => {
-    expect(parseDynamicFogDoors([{ open: "yes" }])).toBeNull();
-    expect(enumerateDoors([fogPath({})])).toEqual([]);
+  it("rejects malformed external metadata without throwing", async () => {
+    expect(parseDynamicFogDoors([{ open: "yes" }])).toEqual([null]);
+    expect(await enumerateDoors([fogPath({})])).toEqual({ doors: [], invalidGeometry: false });
   });
 
-  it("enumerates a door and evaluates its transformed midpoint", () => {
+  it("enumerates a door and evaluates its transformed midpoint", async () => {
     const item = fogPath([{ open: false, start: { index: 0, distance: 20 }, end: { index: 0, distance: 60 } }]);
-    expect(enumerateDoors([item])).toEqual([{ ref: { fogItemId: "fog-1", doorIndex: 0 }, open: false, position: { x: 140, y: 50 } }]);
+    expect((await enumerateDoors([item])).doors[0]).toMatchObject({ ref: { fogItemId: "fog-1", doorIndex: 0 }, open: false, position: { x: 140, y: 50 } });
   });
 
-  it("enumerates doors attached to Dynamic Fog shape drawings", () => {
+  it("enumerates doors attached to Dynamic Fog shape drawings", async () => {
     const item = fogRectangle([{ open: true, start: { index: 0, distance: 10 }, end: { index: 0, distance: 50 } }]);
-    expect(enumerateDoors([item])).toEqual([{ ref: { fogItemId: "fog-1", doorIndex: 0 }, open: true, position: { x: 130, y: 50 } }]);
+    const found = (await enumerateDoors([item])).doors[0];
+    expect(found).toMatchObject({ ref: { fogItemId: "fog-1", doorIndex: 0 }, open: true });
+    expect(found.position.x).toBeCloseTo(130); expect(found.position.y).toBeCloseTo(50);
   });
 
   it("reports deleted and out-of-range door references", () => {
@@ -95,38 +98,74 @@ describe("Dynamic Fog adapter", () => {
     expect(lookupDoor(items, { fogItemId: "fog-1", doorIndex: 2 })).toEqual({ ok: false, reason: "missing-door" });
   });
 
-  it("finds the contour span crossing a selected item's bounds", () => {
-    const candidates = findDoorCandidates([fogPath([])], {
+  it("finds the contour span crossing a selected item's bounds", async () => {
+    const candidates = await findDoorCandidates([fogPath([])], {
       min: { x: 120, y: 40 }, max: { x: 160, y: 60 }, width: 40, height: 20, center: { x: 140, y: 50 },
     });
-    expect(candidates).toEqual([{
-      itemId: "fog-1",
-      start: { index: 0, distance: 20 },
-      end: { index: 0, distance: 60 },
-    }]);
+    expect(candidates).toHaveLength(1); expect(candidates[0]).toMatchObject({ itemId: "fog-1", start: { index: 0 } });
+    expect(candidates[0].start.distance).toBeCloseTo(20); expect(candidates[0].end.distance).toBeCloseTo(60);
   });
 
-  it("selects a single boundary", () => {
-    expect(selectDoorCandidate([fogLine("only", [-10, 0], [10, 0])], bounds)).toMatchObject({ ok: true, candidate: { itemId: "only" } });
+  it("selects a single boundary", async () => {
+    expect(await selectDoorCandidate([fogLine("only", [-10, 0], [10, 0])], bounds)).toMatchObject({ ok: true, candidate: { itemId: "only" } });
   });
 
-  it("selects one deterministic owner for adjacent rectangles sharing an edge", () => {
+  it("selects one deterministic owner for adjacent rectangles sharing an edge", async () => {
     const left = { ...fogRectangle([]), id: "left", position: { x: -100, y: -25 } };
     const right = { ...fogRectangle([]), id: "right", position: { x: 0, y: -25 } };
-    expect(selectDoorCandidate([right, left], bounds)).toMatchObject({ ok: true, candidate: { itemId: "left" } });
+    expect(await selectDoorCandidate([right, left], bounds)).toMatchObject({ ok: true, candidate: { itemId: "left" } });
   });
 
-  it("accepts a shared boundary drawn in reverse", () => {
-    const result = selectDoorCandidate([
+  it("accepts a shared boundary drawn in reverse", async () => {
+    const result = await selectDoorCandidate([
       fogLine("b", [-10, 0], [10, 0]), fogLine("a", [10, 0], [-10, 0]),
     ], bounds);
     expect(result).toMatchObject({ ok: true, candidate: { itemId: "a" } });
   });
 
-  it("accepts adjacent closed curves sharing a reversed edge", () => {
+  it("rejects curved boundaries that only appear coincident under the old approximation", async () => {
     const left = fogCurve("left", [{ x: -20, y: -20 }, { x: 0, y: -20 }, { x: 0, y: 20 }, { x: -20, y: 20 }]);
     const right = fogCurve("right", [{ x: 0, y: -20 }, { x: 20, y: -20 }, { x: 20, y: 20 }, { x: 0, y: 20 }]);
-    expect(selectDoorCandidate([right, left], bounds)).toMatchObject({ ok: true, candidate: { itemId: "left" } });
+    expect(await selectDoorCandidate([right, left], bounds)).toEqual({ ok: false, reason: "no-intersection" });
+  });
+
+  it("keeps valid siblings and preserves their original indices", async () => {
+    const item = fogPath([
+      { open: false, start: { index: 0, distance: 1 }, end: { index: 0, distance: 5 } },
+      { broken: true },
+      { open: true, start: { index: 0, distance: 20 }, end: { index: 0, distance: 30 } },
+    ]);
+    const parsed = parseDynamicFogDoors(item.metadata[DYNAMIC_FOG_DOORS_KEY]);
+    expect(parsed?.[0]).not.toBeNull(); expect(parsed?.[1]).toBeNull(); expect(parsed?.[2]).not.toBeNull();
+    expect((await enumerateDoors([item])).doors.map((door) => door.ref.doorIndex)).toEqual([0, 2]);
+  });
+
+  it("chooses overlap before proximity and reports overlap ambiguity", () => {
+    const located = (id: string, x: number, y = 0) => ({ ref: { fogItemId: id, doorIndex: 0 }, open: false, position: { x, y }, geometry: {
+      start: { x, y }, end: { x: x + 10, y }, midpoint: { x: x + 5, y }, worldPoints: [{ x, y }, { x: x + 10, y }],
+      bounds: { min: { x, y }, max: { x: x + 10, y }, width: 10, height: 0, center: { x: x + 5, y } },
+    } });
+    const longBounds = { min: { x: 0, y: -10 }, max: { x: 1000, y: 10 }, width: 1000, height: 20, center: { x: 500, y: 0 } };
+    expect(chooseAutomaticDoor([located("inside", 20), located("near", 1050)], longBounds, 225)).toMatchObject({ ok: true, method: "overlap", door: { ref: { fogItemId: "inside" } } });
+    expect(chooseAutomaticDoor([located("a", 20), located("b", 40)], longBounds, 225)).toMatchObject({ ok: false, reason: "ambiguous-overlap" });
+  });
+
+  it("uses bounds-to-segment proximity and reports equally plausible nearby doors", () => {
+    const make = (id: string, y: number) => ({ ref: { fogItemId: id, doorIndex: 0 }, open: false, position: { x: 5, y }, geometry: { start: { x: 0, y }, end: { x: 10, y }, midpoint: { x: 5, y }, worldPoints: [{ x: 0, y }, { x: 10, y }], bounds: { min: { x: 0, y }, max: { x: 10, y }, width: 10, height: 0, center: { x: 5, y } } } });
+    const box = { min: { x: 0, y: 0 }, max: { x: 10, y: 10 }, width: 10, height: 10, center: { x: 5, y: 5 } };
+    expect(chooseAutomaticDoor([make("one", 20)], box, 225)).toMatchObject({ ok: true, method: "nearby", door: { distance: 10 } });
+    expect(chooseAutomaticDoor([make("a", 20), make("b", -10)], box, 225)).toMatchObject({ ok: false, reason: "ambiguous-nearby" });
+    expect(chooseAutomaticDoor([make("far", 500)], box, 225)).toEqual({ ok: false, reason: "none" });
+  });
+
+  it("resolves exact manual overlay references and rejects invalid parents and indices", () => {
+    const parent = fogPath([{ open: false, start: { index: 0, distance: 1 }, end: { index: 0, distance: 5 } }]);
+    const target = { attachedTo: parent.id, metadata: { [DYNAMIC_FOG_DOOR_INDEX_KEY]: 0 } };
+    expect(resolveManualDoorTarget(target, [parent])).toEqual({ ok: true, ref: { fogItemId: "fog-1", doorIndex: 0 } });
+    expect(resolveManualDoorTarget({ ...target, metadata: { [DYNAMIC_FOG_DOOR_INDEX_KEY]: -1 } }, [parent])).toMatchObject({ ok: false, reason: "invalid-target" });
+    expect(resolveManualDoorTarget(target, [])).toMatchObject({ ok: false, reason: "missing-parent" });
+    expect(resolveManualDoorTarget(target, [{ ...parent, layer: "MAP" }])).toMatchObject({ ok: false, reason: "invalid-parent" });
+    expect(resolveManualDoorTarget({ ...target, metadata: { [DYNAMIC_FOG_DOOR_INDEX_KEY]: 2 } }, [parent])).toMatchObject({ ok: false, reason: "missing-door" });
   });
 
   it.each([
@@ -134,18 +173,18 @@ describe("Dynamic Fog adapter", () => {
     ["crossing boundaries", [fogLine("a", [-10, 0], [10, 0]), fogLine("b", [0, -10], [0, 10])]],
     ["a shared boundary plus a distinct third", [fogLine("a", [-10, 0], [10, 0]), fogLine("b", [10, 0], [-10, 0]), fogLine("c", [-10, 0.1], [10, 0.1])]],
     ["partial overlap", [fogLine("a", [-10, 0], [2, 0]), fogLine("b", [-2, 0], [10, 0])]],
-  ])("rejects %s", (_name, items) => {
-    expect(selectDoorCandidate(items, bounds)).toEqual({ ok: false, reason: "ambiguous-intersection" });
+  ])("rejects %s", async (_name, items) => {
+    expect(await selectDoorCandidate(items, bounds)).toEqual({ ok: false, reason: "ambiguous-intersection" });
   });
 
-  it("compares transformed boundaries in world coordinates", () => {
+  it("compares transformed boundaries in world coordinates", async () => {
     const coincident = [
       fogLine("a", [-10, 0], [10, 0], { position: { x: 2, y: 0 }, rotation: 90, scale: { x: 1, y: 2 } }),
       fogLine("b", [10, 0], [-10, 0], { position: { x: 2, y: 0 }, rotation: 90, scale: { x: 1, y: 2 } }),
     ];
     const verticalBounds = { min: { x: 1, y: -5 }, max: { x: 3, y: 5 }, width: 2, height: 10, center: { x: 2, y: 0 } };
-    expect(selectDoorCandidate(coincident, verticalBounds)).toMatchObject({ ok: true });
-    expect(selectDoorCandidate([...coincident.slice(0, 1), { ...coincident[1], position: { x: 2.1, y: 0 } }], verticalBounds))
+    expect(await selectDoorCandidate(coincident, verticalBounds)).toMatchObject({ ok: true });
+    expect(await selectDoorCandidate([...coincident.slice(0, 1), { ...coincident[1], position: { x: 2.1, y: 0 } }], verticalBounds))
       .toEqual({ ok: false, reason: "ambiguous-intersection" });
   });
 

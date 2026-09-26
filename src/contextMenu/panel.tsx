@@ -11,6 +11,7 @@ import { INTEGRATION_NAMES } from "../doorJam/providers";
 import { discoverAndLinkStageManager } from "../stageManager/linking";
 import { applyOwlbearTheme } from "../theme";
 import { DEFAULT_TOOL_PREFERENCES, readToolPreferences, type DoorJamToolPreferences } from "../tool/preferences";
+import { openDynamicFogLinkPopover } from "../doorJam/dynamicFogLinkPopover";
 
 export function ContextMenuPanel() {
   const [image, setImage] = useState<Image | null>(null); const [busy, setBusy] = useState(false);
@@ -36,7 +37,10 @@ export function ContextMenuPanel() {
   const link = (provider: "dynamic-fog" | "smoke") => run(async () => {
     const label = provider === "smoke" ? "Smoke & Spectre!" : "Dynamic Fog";
     const result = await linkNearbyDoorOrCreate(image, () => notify(`No existing ${label} door found in range. Attempting safe creation.`), provider);
-    if (!result.ok) return void await notify(result.message, "ERROR");
+    if (!result.ok) {
+      if (provider === "dynamic-fog" && result.action === "choose") return void await openDynamicFogLinkPopover(image.id, result.reason ?? "none");
+      return void await notify(result.message, "ERROR");
+    }
     await notify(result.warning ? `Door linked, but ${label} could not synchronize its initial state.` : result.outcome === "linked-existing" ? `Door image linked to ${label}.` : `New ${label} door created and linked.`, result.warning ? "ERROR" : "DEFAULT");
     if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
   });

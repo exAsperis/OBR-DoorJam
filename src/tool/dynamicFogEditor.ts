@@ -19,7 +19,7 @@ interface Session {
   proposal: DoorEditProposal;
   contour: EditableContour;
   fingerprint: string;
-  siblingDoors: DynamicFogDoor[];
+  siblingDoors: Array<DynamicFogDoor | null>;
   hitTolerance: number;
   drag?: { handle: DoorEditHandle; anchor: number };
 }
@@ -64,11 +64,13 @@ async function renderControls(sessions: Session[]) {
 
 async function createSessions(items: Item[]): Promise<Session[]> {
   const sessions: Session[] = [];
-  for (const item of items) {
+  for (const source of items) {
+    const item = structuredClone(source) as Item;
     const doors = parseDynamicFogDoors(item.metadata[DYNAMIC_FOG_DOORS_KEY]);
     if (!doors) continue;
     for (let doorIndex = 0; doorIndex < doors.length; doorIndex += 1) {
       const door = doors[doorIndex];
+      if (!door) continue;
       const contour = await getEditableContour(item, door.start);
       if (!contour || door.end.index !== door.start.index || door.end.distance > contour.length) {
         contour?.dispose();
@@ -78,7 +80,7 @@ async function createSessions(items: Item[]): Promise<Session[]> {
         ref: { provider: "dynamic-fog", fogItemId: item.id, doorIndex },
         original: cloneProposal(door), proposal: cloneProposal(door), contour,
         fingerprint: geometryFingerprint(item),
-        siblingDoors: doors.map((candidate) => ({ ...candidate, start: { ...candidate.start }, end: { ...candidate.end } })),
+        siblingDoors: doors.map((candidate) => candidate ? ({ ...candidate, start: { ...candidate.start }, end: { ...candidate.end } }) : null),
         hitTolerance: 0,
       });
     }
@@ -130,7 +132,7 @@ export async function setupDynamicFogEditorMode(): Promise<() => void> {
     if (!current?.drag) return;
     const projected = current.contour.project(event.pointerPosition);
     const result = proposeDoorEdit({ open: false, ...current.original }, current.drag.handle, projected.distance, current.drag.anchor, current.contour.length);
-    if (!result.ok || current.siblingDoors.some((door, index) => index !== current.ref.doorIndex && doorSpansOverlap(result.proposal, door, 0.5))) return;
+    if (!result.ok || current.siblingDoors.some((door, index) => Boolean(door) && index !== current.ref.doorIndex && doorSpansOverlap(result.proposal, door!, 0.5))) return;
     current.proposal = result.proposal;
     await renderControls(sessions);
   };
