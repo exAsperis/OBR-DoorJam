@@ -4,10 +4,18 @@ import { applyArtwork } from "./artwork";
 import { readDoorJamMetadata, writeDoorJamMetadata } from "./metadata";
 
 let generation = 0;
+const suppressedDoorIds = new Set<string>();
+
+export async function withDoorSynchronizationSuppressed<T>(imageId: string, operation: () => Promise<T>): Promise<T> {
+  suppressedDoorIds.add(imageId);
+  try { return await operation(); }
+  finally { suppressedDoorIds.delete(imageId); }
+}
 
 export async function synchronizeFromItems(items: Item[]): Promise<void> {
   const request = ++generation;
   const changes = items.filter(isImage).flatMap((image) => {
+    if (suppressedDoorIds.has(image.id)) return [];
     const metadata = readDoorJamMetadata(image);
     if (!metadata) return [];
     const lookup = resolveFogProviderState(items, metadata);

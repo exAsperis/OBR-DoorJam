@@ -16,7 +16,9 @@ export function lookupDynamicFogDoor(items: Item[], link: DynamicFogLink): Provi
 export function lookupSmokeLinkedDoor(items: Item[], link: SmokeLink): ProviderDoorLookup { return lookupSmokeDoor(items, link); }
 export async function setDynamicFogDoorState(link: DynamicFogLink, open: boolean): Promise<ProviderDoorLookup> {
   const result = await setDynamicState(link, open);
-  return result.ok ? { ok: true, open: result.door.open } : result;
+  // updateItems callback values may be Immer proxies that are revoked once the
+  // transaction completes. The requested state is authoritative on success.
+  return result.ok ? { ok: true, open } : result;
 }
 export async function setSmokeLinkedDoorState(link: SmokeLink, open: boolean): Promise<ProviderDoorLookup> { return setSmokeDoorState(link, open); }
 

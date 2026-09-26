@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-vi.mock("../dynamicFog/adapter", () => ({ lookupDoor: vi.fn((_items, link) => link.fogItemId === "missing" ? { ok: false, reason: "missing-item" } : { ok: true, door: { open: link.fogItemId === "open" } }), setDoorState: vi.fn() }));
+const mocks = vi.hoisted(() => ({ setDynamic: vi.fn() }));
+vi.mock("../dynamicFog/adapter", () => ({ lookupDoor: vi.fn((_items, link) => link.fogItemId === "missing" ? { ok: false, reason: "missing-item" } : { ok: true, door: { open: link.fogItemId === "open" } }), setDoorState: mocks.setDynamic }));
 vi.mock("../smoke/adapter", () => ({ lookupSmokeDoor: vi.fn((_items, link) => link.doorItemId === "missing" ? { ok: false, reason: "missing-item" } : { ok: true, open: link.doorItemId === "open" }), setSmokeDoorState: vi.fn() }));
-import { resolveFogProviderState } from "./providers";
+import { resolveFogProviderState, setDynamicFogDoorState } from "./providers";
 const metadata = (dynamicFog?: string, smoke?: string) => ({ version: 4 as const, closedImage: {} as never, renderedState: "closed" as const,
   links: { ...(dynamicFog ? { dynamicFog: { fogItemId: dynamicFog, doorIndex: 0 } } : {}), ...(smoke ? { smoke: { doorItemId: smoke } } : {}) } });
 describe("fog reverse synchronization resolution", () => {
@@ -10,4 +11,9 @@ describe("fog reverse synchronization resolution", () => {
   it("uses an agreed state", () => expect(resolveFogProviderState([], metadata("open", "open"))).toEqual({ ok: true, open: true }));
   it("does not choose when valid providers disagree", () => expect(resolveFogProviderState([], metadata("open", "closed"))).toBeNull());
   it("ignores Stage Manager for reverse synchronization", () => expect(resolveFogProviderState([], { ...metadata(), links: { stageManager: { itemIds: ["lift"] } } })).toBeNull());
+  it("does not dereference a revoked Dynamic Fog transaction result", async () => {
+    const door = Object.defineProperty({}, "open", { get: () => { throw new Error("Cannot perform 'get' on a proxy that has been revoked"); } });
+    mocks.setDynamic.mockResolvedValue({ ok: true, door });
+    await expect(setDynamicFogDoorState({ fogItemId: "fog", doorIndex: 0 }, true)).resolves.toEqual({ ok: true, open: true });
+  });
 });

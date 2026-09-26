@@ -5,6 +5,7 @@ import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control
 import { openDoorImagesPopover } from "../doorJam/imagesPopover";
 import { linkNearbyDoorOrCreate } from "../doorJam/linking";
 import { countDoorLinks, readDoorJamMetadata, removeDoorJamMetadata, setDoorLocked } from "../doorJam/metadata";
+import { INTEGRATION_NAMES } from "../doorJam/providers";
 import { breakDoorLinkInteractive } from "../doorJam/breakLink";
 import { discoverAndLinkStageManager } from "../stageManager/linking";
 import { getDoorJamSettings, setPlayersCanOperate } from "../doorJam/settings";
@@ -52,7 +53,7 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     try {
       const result = await linkNearbyDoorOrCreate(image, () => notify(`No existing ${smoke ? "Smoke & Spectre" : "Dynamic Fog"} door found in range. Attempting safe creation.`), smoke ? "smoke" : "dynamic-fog");
       if (!result.ok) { await notify(result.message, "ERROR"); return; }
-      await notify(result.outcome === "linked-existing" ? `Door image linked to ${smoke ? "Smoke & Spectre" : "Dynamic Fog"}.` : `New ${smoke ? "Smoke & Spectre" : "Dynamic Fog"} door created and linked.`);
+      await notify(result.warning ? `Door linked, but ${smoke ? "Smoke & Spectre!" : "Dynamic Fog"} could not synchronize its initial state.` : result.outcome === "linked-existing" ? `Door image linked to ${smoke ? "Smoke & Spectre" : "Dynamic Fog"}.` : `New ${smoke ? "Smoke & Spectre" : "Dynamic Fog"} door created and linked.`, result.warning ? "ERROR" : "DEFAULT");
       if (result.needsOpenArtwork) await openDoorImagesPopover(image.id);
     } catch { await notify("DoorJam could not link this image. Check Dynamic Fog and try again.", "ERROR"); }
     return;
@@ -69,7 +70,7 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
   if (action === "operate") {
     const result = await toggleLinkedDoorState(image.id);
     if (!result.ok) await notify(doorStateErrorMessage(result.reason), "ERROR");
-    else if (result.warnings?.length) await notify("Door changed state, but one or more integrations could not update.", "ERROR");
+    else if (result.warnings?.length) await notify(`Door changed state, but ${result.warnings.map((warning) => `${INTEGRATION_NAMES[warning.integration]} (${warning.message})`).join(" and ")} could not update.`, "ERROR");
     return;
   }
   if (action === "setImages") {

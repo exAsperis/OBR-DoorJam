@@ -5,6 +5,7 @@ import { renderDoorImage } from "./artwork";
 import { readDoorJamMetadata, type DoorLinkKind } from "./metadata";
 import { setDynamicFogDoorState, setSmokeLinkedDoorState } from "./providers";
 import { getDoorJamSettings } from "./settings";
+import { withDoorSynchronizationSuppressed } from "./synchronization";
 
 export interface DoorIntegrationWarning { integration: DoorLinkKind; message: string }
 export type DoorStateCommandResult =
@@ -28,19 +29,28 @@ async function operateLocally(imageId: string, open: boolean, enforcePlayerPolic
     if (!(await getDoorJamSettings()).playersCanOperate) return { ok: false, reason: "player-operation-disabled" };
   }
   if (open && !metadata.openImage) return { ok: false, reason: "missing-open-artwork" };
-  if (await renderDoorImage(image.id, open) !== "updated") return { ok: false, reason: "render-failed" };
-
-  const updates: Array<Promise<{ kind: DoorLinkKind; ok: boolean }>> = [];
-  if (metadata.links?.dynamicFog) updates.push(setDynamicFogDoorState(metadata.links.dynamicFog, open).then((result) => ({ kind: "dynamicFog", ok: result.ok })));
-  if (metadata.links?.smoke) updates.push(setSmokeLinkedDoorState(metadata.links.smoke, open).then((result) => ({ kind: "smoke", ok: result.ok })));
+  return withDoorSynchronizationSuppressed(image.id, async () => {
+  if (await renderDoorImage(image.id, open) !== "updated") return { ok: false, reason: "render-failed" } as DoorStateCommandResult;
+  const updates: Array<Promise<{ kind: DoorLinkKind; ok: boolean; message?: string }>> = [];
+  const guarded = async (kind: DoorLinkKind, update: () => Promise<{ ok: boolean; reason?: string; message?: string }>) => {
+    try {
+      const result = await update();
+      return { kind, ok: result.ok, message: result.message ?? result.reason };
+    } catch (error) {
+      return { kind, ok: false, message: error instanceof Error ? error.message : "update failed" };
+    }
+  };
+  if (metadata.links?.dynamicFog) updates.push(guarded("dynamicFog", () => setDynamicFogDoorState(metadata.links!.dynamicFog!, open)));
+  if (metadata.links?.smoke) updates.push(guarded("smoke", () => setSmokeLinkedDoorState(metadata.links!.smoke!, open)));
   for (const itemId of metadata.links?.stageManager?.itemIds ?? [])
-    updates.push(setStageManagerElevatorDisabled(itemId, !open).then((result) => ({ kind: "stageManager", ok: result.ok })));
-  const settled = await Promise.allSettled(updates);
-  const warnings = settled.flatMap((result) => result.status === "fulfilled" && result.value.ok ? [] : [{
-    integration: result.status === "fulfilled" ? result.value.kind : "stageManager" as const,
-    message: "The linked integration could not be synchronized.",
+    updates.push(guarded("stageManager", () => setStageManagerElevatorDisabled(itemId, !open)));
+  const results = await Promise.all(updates);
+  const warnings = results.flatMap((result) => result.ok ? [] : [{
+    integration: result.kind,
+    message: result.message ?? "The linked integration could not be synchronized.",
   }]);
   return warnings.length ? { ok: true, warnings } : { ok: true };
+  });
 }
 
 export async function setLinkedDoorState(imageId: string, open: boolean): Promise<DoorStateCommandResult> {
