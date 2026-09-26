@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   toggle: vi.fn(),
   openImages: vi.fn(),
   updateItems: vi.fn(),
+  getItems: vi.fn(),
   removeMetadata: vi.fn(),
   removeFogLink: vi.fn(),
   breakLink: vi.fn(),
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@owlbear-rodeo/sdk", () => ({
   default: {
     player: { getRole: vi.fn().mockResolvedValue("GM") },
-    scene: { isReady: vi.fn().mockResolvedValue(true), items: { updateItems: mocks.updateItems } },
+    scene: { isReady: vi.fn().mockResolvedValue(true), items: { getItems: mocks.getItems, updateItems: mocks.updateItems } },
     notification: { show: mocks.notify },
   },
   isImage: (item: { type?: string }) => item.type === "IMAGE",
@@ -31,6 +32,10 @@ vi.mock("../doorJam/metadata", () => ({ readDoorJamMetadata: mocks.readMetadata,
 vi.mock("../doorJam/breakLink", () => ({ breakDoorLinkInteractive: mocks.breakLink }));
 vi.mock("../stageManager/linking", () => ({ discoverAndLinkStageManager: vi.fn() }));
 vi.mock("../doorJam/settings", () => ({ getDoorJamSettings: vi.fn().mockResolvedValue({ playersCanOperate: true }), setPlayersCanOperate: vi.fn() }));
+vi.mock("../doorJam/overlays", () => ({
+  getDoorOverlayDoorId: (item: { id?: string }) => item.id === "door-overlay" ? "door" : null,
+  handleDoorOverlayDoubleClick: vi.fn(),
+}));
 
 import { DOOR_ACTION_SHORTCUTS, DOORJAM_TOOL_SHORTCUT, performDoorAction, PLAYER_OPERATION_SHORTCUT } from "./actions";
 import { DYNAMIC_FOG_EDITOR_SHORTCUT } from "./dynamicFogEditor";
@@ -38,11 +43,13 @@ import { DYNAMIC_FOG_EDITOR_SHORTCUT } from "./dynamicFogEditor";
 const RESERVED_SHORTCUTS: string[] = ["1", "2", "3", "4", "5", "6", "7", "-", "=", "W", "S", "F", "D", "M", "Q", "T", "H"];
 
 const image = { id: "door", type: "IMAGE" } as Image;
+const overlay = { id: "door-overlay", type: "SHAPE" };
 
 describe("DoorJam tool modes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.readMetadata.mockReturnValue(undefined);
+    mocks.getItems.mockResolvedValue([image]);
     mocks.updateItems.mockImplementation(async (_ids, update) => update([image]));
   });
 
@@ -78,6 +85,19 @@ describe("DoorJam tool modes", () => {
     await performDoorAction("remove", image);
     expect(mocks.removeMetadata).toHaveBeenCalledWith(image);
     expect(mocks.removeFogLink).not.toHaveBeenCalled();
+  });
+
+  it("removes DoorJam metadata from a linked door", async () => {
+    mocks.readMetadata.mockReturnValue({ links: { dynamicFog: { fogItemId: "fog", doorIndex: 0 } } });
+    await performDoorAction("remove", image);
+    expect(mocks.removeMetadata).toHaveBeenCalledWith(image);
+  });
+
+  it("resolves a DoorJam overlay to its backing image for Remove Door", async () => {
+    mocks.readMetadata.mockReturnValue({ renderedState: "closed" });
+    await performDoorAction("remove", overlay as never);
+    expect(mocks.getItems).toHaveBeenCalledWith(["door"]);
+    expect(mocks.removeMetadata).toHaveBeenCalledWith(image);
   });
 
   it("toggles the lock state of a configured door", async () => {

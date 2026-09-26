@@ -9,7 +9,7 @@ import { INTEGRATION_NAMES } from "../doorJam/providers";
 import { breakDoorLinkInteractive } from "../doorJam/breakLink";
 import { discoverAndLinkStageManager } from "../stageManager/linking";
 import { getDoorJamSettings, setPlayersCanOperate } from "../doorJam/settings";
-import { handleDoorOverlayDoubleClick } from "../doorJam/overlays";
+import { getDoorOverlayDoorId, handleDoorOverlayDoubleClick } from "../doorJam/overlays";
 import { getToolPreferences, readToolPreferences, type DoorJamToolPreferences } from "./preferences";
 import { openToolSettingsPopover, TOOL_SETTINGS_ACTION_ID } from "./settingsPopover";
 import { DYNAMIC_FOG_EDITOR_MODE_ID, setupDynamicFogEditorMode } from "./dynamicFogEditor";
@@ -31,14 +31,21 @@ export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
 
 async function selectedDoorImage(target: Item | undefined, action: DoorActionName): Promise<Image | null> {
   const role = await OBR.player.getRole();
-  if (!(await OBR.scene.isReady()) || !target || !isImage(target)) return null;
+  if (!(await OBR.scene.isReady()) || !target) return null;
   if (role !== "GM" && action !== "operate") return null;
-  const configured = Boolean(readDoorJamMetadata(target));
+  let image: Image | null = isImage(target) ? target : null;
+  if (!image) {
+    const doorId = getDoorOverlayDoorId(target);
+    if (!doorId) return null;
+    const backingItem = (await OBR.scene.items.getItems([doorId]))[0];
+    if (!backingItem || !isImage(backingItem)) return null;
+    image = backingItem;
+  }
+  const configured = Boolean(readDoorJamMetadata(image));
   if (action !== "link" && action !== "linkSmoke" && action !== "linkStageManager" && action !== "setImages" && !configured) return null;
-  const metadata = readDoorJamMetadata(target);
+  const metadata = readDoorJamMetadata(image);
   if (action === "unlink" && (!metadata || countDoorLinks(metadata) === 0)) return null;
-  if (action === "remove" && (!metadata || countDoorLinks(metadata) !== 0)) return null;
-  return target;
+  return image;
 }
 
 async function notify(message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT") {

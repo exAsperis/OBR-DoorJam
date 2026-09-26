@@ -25,6 +25,10 @@ function overlayMetadata(item: Item | undefined): OverlayMetadata | null {
     : null;
 }
 
+export function getDoorOverlayDoorId(item: Item | undefined): string | null {
+  return overlayMetadata(item)?.doorId ?? null;
+}
+
 async function resolveOverlay(event: ToolEvent): Promise<OverlayMetadata | null> {
   const direct = overlayMetadata(event.target);
   if (direct) return direct;

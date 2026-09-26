@@ -56,6 +56,7 @@ export function ContextMenuPanel() {
     {actionButton("operate", toggle)}
     {actionButton("lock", () => run(async () => OBR.scene.items.updateItems([image.id], (items) => { const current = items[0] && readDoorJamMetadata(items[0]); if (items[0] && current) setDoorLocked(items[0], current, !current.locked); })), lockDefinition)}
     {actionButton("setImages", () => run(() => openDoorImagesPopover(image.id)))}{commonLinks}
-    {countDoorLinks(metadata) ? actionButton("unlink", () => run(() => breakDoorLinkInteractive(image.id))) : actionButton("remove", () => run(async () => { await OBR.scene.items.updateItems([image.id], (items) => { if (items[0]) removeDoorJamMetadata(items[0]); }); await notify("DoorJam door removed. The displayed image was preserved."); }))}
+    {countDoorLinks(metadata) > 0 && actionButton("unlink", () => run(() => breakDoorLinkInteractive(image.id)))}
+    {actionButton("remove", () => run(async () => { await OBR.scene.items.updateItems([image.id], (items) => { if (items[0]) removeDoorJamMetadata(items[0]); }); await notify("DoorJam door removed. The displayed image was preserved."); }))}
   </main>;
 }
