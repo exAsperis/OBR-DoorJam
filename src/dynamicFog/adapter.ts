@@ -1,5 +1,7 @@
-import OBR, { type BoundingBox, type Item, type Vector2 } from "@owlbear-rodeo/sdk";
+import OBR, { isCurve, isLine, isPath, isShape, type BoundingBox, type Item, type Vector2 } from "@owlbear-rodeo/sdk";
 import { areCoincidentDoorSpans, contourSpansWithinBounds, doorMidpoint } from "./geometry";
+import { doorSpansOverlap, MIN_DOOR_LENGTH, type DoorEditProposal } from "./editGeometry";
+import { geometryFingerprint } from "./editContour";
 import type { ContourMarker, DoorLookupResult, DynamicFogDoor, DynamicFogDoorRef, LocatedDynamicFogDoor } from "./types";
 
 export const DYNAMIC_FOG_DOORS_KEY = "rodeo.owlbear.dynamic-fog/doors";
@@ -87,6 +89,41 @@ export async function setDoorState(ref: DynamicFogDoorRef, open: boolean): Promi
 export type CreateDoorResult =
   | { ok: true; ref: DynamicFogDoorRef }
   | { ok: false; reason: "no-intersection" | "ambiguous-intersection" | "invalid-format" | "missing-item" };
+
+export type UpdateDoorGeometryResult =
+  | { ok: true; ref: DynamicFogDoorRef }
+  | { ok: false; reason: "missing-item" | "missing-door" | "invalid-format" | "invalid-geometry" | "overlapping-door" | "stale-edit" | "update-failed" };
+
+const SAME_CONTOUR_DOOR_GAP = 0.5;
+const sameMarker = (a: ContourMarker, b: ContourMarker) => a.index === b.index && a.distance === b.distance;
+
+export async function updateDoorGeometry(ref: DynamicFogDoorRef, original: DoorEditProposal, proposed: DoorEditProposal, contourLength: number, originalFingerprint?: string): Promise<UpdateDoorGeometryResult> {
+  if (!Number.isFinite(contourLength) || contourLength < MIN_DOOR_LENGTH || proposed.start.index !== proposed.end.index
+    || proposed.start.index < 0 || !Number.isFinite(proposed.start.distance) || !Number.isFinite(proposed.end.distance)
+    || proposed.start.distance < 0 || proposed.end.distance < 0 || proposed.start.distance > contourLength
+    || proposed.end.distance > contourLength || Math.abs(proposed.end.distance - proposed.start.distance) < MIN_DOOR_LENGTH) {
+    return { ok: false, reason: "invalid-geometry" };
+  }
+  let result: UpdateDoorGeometryResult = { ok: false, reason: "missing-item" };
+  try {
+    await OBR.scene.items.updateItems([ref.fogItemId], (items) => {
+      const item = items[0];
+      if (!item) return;
+      if (item.layer !== "FOG" || (!isLine(item) && !isCurve(item) && !isPath(item) && !isShape(item))) { result = { ok: false, reason: "invalid-geometry" }; return; }
+      if (originalFingerprint && geometryFingerprint(item) !== originalFingerprint) { result = { ok: false, reason: "stale-edit" }; return; }
+      const doors = parseDynamicFogDoors(item.metadata[DYNAMIC_FOG_DOORS_KEY]);
+      if (!doors) { result = { ok: false, reason: "invalid-format" }; return; }
+      const door = doors[ref.doorIndex];
+      if (!door) { result = { ok: false, reason: "missing-door" }; return; }
+      if (!sameMarker(door.start, original.start) || !sameMarker(door.end, original.end)) { result = { ok: false, reason: "stale-edit" }; return; }
+      if (doors.some((other, index) => index !== ref.doorIndex && doorSpansOverlap(proposed, other, SAME_CONTOUR_DOOR_GAP))) { result = { ok: false, reason: "overlapping-door" }; return; }
+      door.start = { ...proposed.start };
+      door.end = { ...proposed.end };
+      result = { ok: true, ref };
+    });
+  } catch { return { ok: false, reason: "update-failed" }; }
+  return result;
+}
 
 function findGeometricDoorCandidates(items: Item[], bounds: BoundingBox) {
   return items.flatMap((item) => item.layer === "FOG"

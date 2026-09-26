@@ -8,6 +8,18 @@ DoorJam turns ordinary Owlbear Rodeo image items into artwork-driven doors. Door
 2. Switch to **Operate Door** and click the door image to open or close it with one click—even when the image is locked.
 3. Optionally use **Link Dynamic Fog Door** or **Link Smoke & Spectre Door**. DoorJam links a unique nearby door or attempts provider-specific creation when none exists.
 
+### Editing a Dynamic Fog doorway
+
+GMs can choose **Edit Dynamic Fog Door** from the DoorJam tool and then select either a DoorJam image linked to Dynamic Fog or one of Dynamic Fog's native door overlays. DoorJam displays two circular endpoint handles, a diamond center handle, and a highlighted preview of the actual fog opening.
+
+- Drag an endpoint to resize the opening while keeping the other endpoint fixed.
+- Drag the center handle to move the complete opening along its existing fog contour without changing its contour length.
+- Press Escape, change modes, or cancel the drag to discard an unfinished edit.
+
+Editing changes the existing Dynamic Fog metadata entry in place. It never moves, resizes, rotates, unlocks, or otherwise modifies a linked DoorJam image. Native Dynamic Fog doors can be edited without first linking an image. Smoke & Spectre links are intentionally ignored by this mode.
+
+The editor supports Dynamic Fog lines, supported shapes, paths (including multiple contours), and cardinal-spline curves using Dynamic Fog-compatible CanvasKit contour distances. A door cannot cross the contour seam, change fog items or contours, collapse below the minimum length, or overlap another door on the same parent contour. Unsupported, stale, or ambiguous geometry is rejected without changing scene metadata.
+
 The context menu and toolbar expose the same DoorJam actions in the same order.
 
 While a fog-provider link is valid, that provider is authoritative and DoorJam mirrors changes made through it. If the link becomes unavailable, the image remains operable using its last displayed state. **Unlink Door** removes only the reference; **Remove Door** removes standalone DoorJam configuration while preserving the displayed image and underlying provider door.
@@ -31,6 +43,6 @@ By default, players can operate unlocked doors from the DoorJam tool, context me
 
 While the DoorJam tool is active for the GM, each configured door displays centered lock and Dynamic Fog link status glyphs. Double-click the lock glyph to toggle the door lock. Double-click the linked glyph to unlink it; double-click the unlinked glyph to link a nearby Dynamic Fog door or create one along an intersecting fog edge when no door is in range.
 
-The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.12.0.json`).
+The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.13.0.json`).
 
 Private provider metadata is isolated in `src/dynamicFog/adapter.ts` and `src/smoke/adapter.ts`. Neither provider exposes a formal cross-extension door API, so representation changes should remain confined to those adapters and their geometry helpers.

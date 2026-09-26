@@ -5,6 +5,7 @@ import { synchronizeFromItems, synchronizeScene } from "./doorJam/synchronizatio
 import { handlePlayerDoorOperation } from "./doorJam/control";
 import { setupDoorOverlays } from "./doorJam/overlays";
 import { setupDoorJamTool } from "./tool/actions";
+import { setupDynamicFogEditorMode } from "./tool/dynamicFogEditor";
 
 let cleanup: (() => void) | undefined;
 let configuredRole: "GM" | "PLAYER" | undefined;
@@ -16,6 +17,7 @@ async function configureForRole() {
   configuredRole = role;
   const removeMenus = await setupContextMenu();
   const removeTool = await setupDoorJamTool();
+  const removeDynamicFogEditor = role === "GM" ? await setupDynamicFogEditorMode() : undefined;
   const removeOverlays = role === "GM" ? await setupDoorOverlays() : undefined;
   let removeItems: (() => void) | undefined;
   let removeOperate: (() => void) | undefined;
@@ -36,7 +38,7 @@ async function configureForRole() {
   };
   const removeReady = OBR.scene.onReadyChange((ready) => void attachSceneListener(ready).catch(() => undefined));
   await attachSceneListener(await OBR.scene.isReady());
-  cleanup = () => { removeMenus(); removeTool(); removeOverlays?.(); removeReady(); removeItems?.(); removeOperate?.(); };
+  cleanup = () => { removeMenus(); removeDynamicFogEditor?.(); removeTool(); removeOverlays?.(); removeReady(); removeItems?.(); removeOperate?.(); };
 }
 
 OBR.onReady(async () => {

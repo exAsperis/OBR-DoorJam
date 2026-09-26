@@ -12,7 +12,7 @@ vi.mock("@owlbear-rodeo/sdk", async (original) => {
 
 import {
   DYNAMIC_FOG_DOORS_KEY, createDynamicFogDoor, enumerateDoors, findDoorCandidates, getDoorState,
-  lookupDoor, parseDynamicFogDoors, selectDoorCandidate, setDoorState,
+  lookupDoor, parseDynamicFogDoors, selectDoorCandidate, setDoorState, updateDoorGeometry,
 } from "./adapter";
 
 function fogPath(metadataValue: unknown): Path {
@@ -165,5 +165,56 @@ describe("Dynamic Fog adapter", () => {
     expect(mocks.updateItems).not.toHaveBeenCalled();
     expect(mocks.items.every((item) => item.metadata[DYNAMIC_FOG_DOORS_KEY] instanceof Array
       && (item.metadata[DYNAMIC_FOG_DOORS_KEY] as unknown[]).length === 0)).toBe(true);
+  });
+
+  it("updates only the selected door geometry in place", async () => {
+    const item = fogLine("fog", [-20, 0], [20, 0]);
+    const doors = [
+      { open: true, start: { index: 0, distance: 2 }, end: { index: 0, distance: 8 } },
+      { open: false, start: { index: 0, distance: 20 }, end: { index: 0, distance: 28 } },
+    ];
+    item.metadata = { unrelated: { keep: true }, [DYNAMIC_FOG_DOORS_KEY]: doors };
+    mocks.items = [item];
+    const geometry = { position: structuredClone(item.position), commands: structuredClone(item.commands) };
+    const result = await updateDoorGeometry(
+      { fogItemId: "fog", doorIndex: 0 },
+      { start: { index: 0, distance: 2 }, end: { index: 0, distance: 8 } },
+      { start: { index: 0, distance: 4 }, end: { index: 0, distance: 12 } },
+      40,
+    );
+    expect(result).toEqual({ ok: true, ref: { fogItemId: "fog", doorIndex: 0 } });
+    expect(doors).toEqual([
+      { open: true, start: { index: 0, distance: 4 }, end: { index: 0, distance: 12 } },
+      { open: false, start: { index: 0, distance: 20 }, end: { index: 0, distance: 28 } },
+    ]);
+    expect(item.metadata.unrelated).toEqual({ keep: true });
+    expect({ position: item.position, commands: item.commands }).toEqual(geometry);
+  });
+
+  it("rejects overlapping, stale, and invalid geometry without partial mutation", async () => {
+    const item = fogLine("fog", [-20, 0], [20, 0]);
+    const doors = [
+      { open: false, start: { index: 0, distance: 2 }, end: { index: 0, distance: 8 } },
+      { open: true, start: { index: 0, distance: 12 }, end: { index: 0, distance: 18 } },
+    ];
+    item.metadata[DYNAMIC_FOG_DOORS_KEY] = doors;
+    mocks.items = [item];
+    const snapshot = structuredClone(doors);
+    expect(await updateDoorGeometry({ fogItemId: "fog", doorIndex: 0 }, snapshot[0], { start: { index: 0, distance: 6 }, end: { index: 0, distance: 14 } }, 40))
+      .toEqual({ ok: false, reason: "overlapping-door" });
+    expect(await updateDoorGeometry({ fogItemId: "fog", doorIndex: 0 }, { start: { index: 0, distance: 1 }, end: { index: 0, distance: 8 } }, { start: { index: 0, distance: 3 }, end: { index: 0, distance: 9 } }, 40))
+      .toEqual({ ok: false, reason: "stale-edit" });
+    expect(await updateDoorGeometry({ fogItemId: "fog", doorIndex: 0 }, snapshot[0], { start: { index: 0, distance: 4 }, end: { index: 1, distance: 9 } }, 40))
+      .toEqual({ ok: false, reason: "invalid-geometry" });
+    expect(doors).toEqual(snapshot);
+  });
+
+  it("preserves an open-state change made during editing", async () => {
+    const item = fogLine("fog", [-20, 0], [20, 0]);
+    const door = { open: true, start: { index: 0, distance: 2 }, end: { index: 0, distance: 8 } };
+    item.metadata[DYNAMIC_FOG_DOORS_KEY] = [door];
+    mocks.items = [item];
+    expect(await updateDoorGeometry({ fogItemId: "fog", doorIndex: 0 }, { start: { ...door.start }, end: { ...door.end } }, { start: { index: 0, distance: 3 }, end: { index: 0, distance: 9 } }, 40)).toMatchObject({ ok: true });
+    expect(door.open).toBe(true);
   });
 });

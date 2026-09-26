@@ -10,7 +10,7 @@ import { getDoorJamSettings, setPlayersCanOperate } from "../doorJam/settings";
 import { handleDoorOverlayDoubleClick } from "../doorJam/overlays";
 
 export const DOORJAM_TOOL_ID = `${EXTENSION_ID}/tool`;
-export const modeId = (action: DoorActionName) => `${DOORJAM_TOOL_ID}/${action}`;
+export const modeId = (action: string) => `${DOORJAM_TOOL_ID}/${action}`;
 export const DOORJAM_TOOL_SHORTCUT = "J";
 export const PLAYER_OPERATION_SHORTCUT = "X";
 export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
