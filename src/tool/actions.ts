@@ -1,4 +1,4 @@
-import OBR, { isImage, type Image, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
+import OBR, { isImage, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
 import { DOORJAM_TOOL_PREFERENCES_KEY } from "../constants";
 import { DOOR_ACTIONS, type DoorActionName } from "../doorJam/actions";
 import { doorStateErrorMessage, toggleLinkedDoorState } from "../doorJam/control";
@@ -16,6 +16,7 @@ import { DYNAMIC_FOG_EDITOR_MODE_ID, setupDynamicFogEditorMode } from "./dynamic
 import { DOORJAM_TOOL_ID, modeId } from "./ids";
 import { DYNAMIC_FOG_LINK_CHOICE_CHANNEL, openDynamicFogLinkPopover } from "../doorJam/dynamicFogLinkPopover";
 import { beginDynamicFogSelection, setupDynamicFogSelectionMode } from "./dynamicFogSelection";
+import { setupCreateDoorMode } from "./createDoorMode";
 
 export { DOORJAM_TOOL_ID, modeId } from "./ids";
 export const DOORJAM_TOOL_SHORTCUT = "J";
@@ -31,23 +32,24 @@ export const DOOR_ACTION_SHORTCUTS: Record<DoorActionName, string> = {
   remove: "R",
 };
 
-async function selectedDoorImage(target: Item | undefined, action: DoorActionName): Promise<Image | null> {
+async function selectedDoor(target: Item | undefined, action: DoorActionName): Promise<Item | null> {
   const role = await OBR.player.getRole();
   if (!(await OBR.scene.isReady()) || !target) return null;
   if (role !== "GM" && action !== "operate") return null;
-  let image: Image | null = isImage(target) ? target : null;
-  if (!image) {
-    const doorId = getDoorOverlayDoorId(target);
-    if (!doorId) return null;
+  const doorId = getDoorOverlayDoorId(target);
+  let door: Item | null = null;
+  if (doorId) {
     const backingItem = (await OBR.scene.items.getItems([doorId]))[0];
-    if (!backingItem || !isImage(backingItem)) return null;
-    image = backingItem;
-  }
-  const configured = Boolean(readDoorJamMetadata(image));
+    if (!backingItem || !readDoorJamMetadata(backingItem)) return null;
+    door = backingItem;
+  } else door = readDoorJamMetadata(target) ? target : isImage(target) ? target : null;
+  if (!door) return null;
+  const configured = Boolean(readDoorJamMetadata(door));
   if (action !== "link" && action !== "linkSmoke" && action !== "linkStageManager" && action !== "setImages" && !configured) return null;
-  const metadata = readDoorJamMetadata(image);
+  if (action === "setImages" && !isImage(door)) return null;
+  const metadata = readDoorJamMetadata(door);
   if (action === "unlink" && (!metadata || countDoorLinks(metadata) === 0)) return null;
-  return image;
+  return door;
 }
 
 async function notify(message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT") {
@@ -55,7 +57,7 @@ async function notify(message: string, variant: "DEFAULT" | "ERROR" = "DEFAULT")
 }
 
 export async function performDoorAction(action: DoorActionName, target: Item | undefined): Promise<void> {
-  const image = await selectedDoorImage(target, action);
+  const image = await selectedDoor(target, action);
   if (!image) return;
   if (action === "link" || action === "linkSmoke") {
     const smoke = action === "linkSmoke";
@@ -89,6 +91,7 @@ export async function performDoorAction(action: DoorActionName, target: Item | u
     return;
   }
   if (action === "setImages") {
+    if (!isImage(image)) return;
     await openDoorImagesPopover(image.id);
     return;
   }
@@ -156,6 +159,7 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
   // normalized fail-open preferences so upgrades gain the Stage Manager key.
   await OBR.tool.setMetadata(DOORJAM_TOOL_ID, { [DOORJAM_TOOL_PREFERENCES_KEY]: preferences });
   let removeDynamicFogEditor: (() => void) | undefined;
+  const removeCreateDoor = role === "GM" ? await setupCreateDoorMode() : undefined;
   const removeDynamicFogSelection = role === "GM" ? await setupDynamicFogSelectionMode() : undefined;
   const removeDynamicFogChoice = role === "GM" ? OBR.broadcast.onMessage(DYNAMIC_FOG_LINK_CHOICE_CHANNEL, (event) => {
     const data = event.data as { imageId?: unknown; choice?: unknown; reason?: unknown };
@@ -203,6 +207,7 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
   }
   return () => {
     removeDynamicFogEditor?.();
+    removeCreateDoor?.();
     removeDynamicFogSelection?.(); removeDynamicFogChoice?.();
     for (const action of actions) if (role === "GM" || action === "operate") void OBR.tool.removeMode(modeId(action));
     removeSettings?.();

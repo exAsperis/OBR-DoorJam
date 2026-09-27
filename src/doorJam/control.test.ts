@@ -2,16 +2,18 @@ import type { Image } from "@owlbear-rodeo/sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  role: vi.fn(), getItems: vi.fn(), getDoorState: vi.fn(), setDoorState: vi.fn(), render: vi.fn(), settings: vi.fn(), read: vi.fn(), broadcast: vi.fn(),
+  role: vi.fn(), getItems: vi.fn(), updateItems: vi.fn(), getDoorState: vi.fn(), setDoorState: vi.fn(), render: vi.fn(), settings: vi.fn(), read: vi.fn(), write: vi.fn(), readGenerated: vi.fn(), applyGenerated: vi.fn(), broadcast: vi.fn(),
 }));
 
 vi.mock("@owlbear-rodeo/sdk", () => ({
-  default: { player: { getRole: mocks.role }, scene: { items: { getItems: mocks.getItems } }, broadcast: { sendMessage: mocks.broadcast } },
+  default: { player: { getRole: mocks.role }, scene: { grid: { getDpi: vi.fn().mockResolvedValue(100) }, items: { getItems: mocks.getItems, updateItems: mocks.updateItems } }, broadcast: { sendMessage: mocks.broadcast } },
   isImage: (item: { type?: string }) => item.type === "IMAGE",
 }));
 vi.mock("../dynamicFog/adapter", () => ({ getDoorState: mocks.getDoorState, setDoorState: mocks.setDoorState }));
 vi.mock("./artwork", () => ({ renderDoorImage: mocks.render }));
-vi.mock("./metadata", () => ({ readDoorJamMetadata: mocks.read }));
+vi.mock("./metadata", () => ({ readDoorJamMetadata: mocks.read, writeDoorJamMetadata: mocks.write }));
+vi.mock("../generatedDoors/metadata", () => ({ readGeneratedDoorSpec: mocks.readGenerated }));
+vi.mock("../generatedDoors/createGeneratedDoor", () => ({ applyGeneratedDoorGeometry: mocks.applyGenerated }));
 vi.mock("./settings", () => ({ getDoorJamSettings: mocks.settings }));
 
 import { handlePlayerDoorOperation, toggleLinkedDoorState } from "./control";
@@ -26,6 +28,8 @@ describe("door operation authorization", () => {
     mocks.settings.mockResolvedValue({ playersCanOperate: true });
     mocks.read.mockReturnValue({ version: 2, closedImage: {}, openImage: {}, renderedState: "closed", locked: false });
     mocks.render.mockResolvedValue("updated");
+    mocks.readGenerated.mockReturnValue(null);
+    mocks.updateItems.mockImplementation(async (_ids, update) => update([image]));
   });
 
   it("allows a player to operate an unlocked door by default", async () => {
@@ -59,5 +63,15 @@ describe("door operation authorization", () => {
     expect(mocks.render).toHaveBeenCalledWith("door", true);
     mocks.read.mockReturnValue({ version: 2, closedImage: {}, openImage: {}, renderedState: "closed", locked: true });
     expect(await handlePlayerDoorOperation("door")).toEqual({ ok: false, reason: "locked" });
+  });
+
+  it("regenerates generated swing doors when operated", async () => {
+    const generated = { id: "generated", type: "PATH", metadata: {} };
+    const metadata = { version: 4, renderedState: "closed" as const };
+    const spec = { version: 1, type: "single-swing", style: "plain", width: 100, thickness: 25, color: "#8b5a2b", hingeSide: "left", openAngle: 90, placementRotation: 0 };
+    mocks.role.mockResolvedValue("GM"); mocks.getItems.mockResolvedValue([generated]); mocks.read.mockReturnValue(metadata); mocks.readGenerated.mockReturnValue(spec); mocks.updateItems.mockImplementation(async (_ids, update) => update([generated]));
+    await expect(toggleLinkedDoorState("generated")).resolves.toEqual({ ok: true });
+    expect(mocks.applyGenerated).toHaveBeenCalledWith(generated, expect.objectContaining({ openAngle: 90 }), 100);
+    expect(mocks.write).toHaveBeenCalledWith(generated, expect.objectContaining({ renderedState: "open" }));
   });
 });

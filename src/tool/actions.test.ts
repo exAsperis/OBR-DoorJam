@@ -44,6 +44,7 @@ const RESERVED_SHORTCUTS: string[] = ["1", "2", "3", "4", "5", "6", "7", "-", "=
 
 const image = { id: "door", type: "IMAGE" } as Image;
 const overlay = { id: "door-overlay", type: "SHAPE" };
+const generated = { id: "generated", type: "PATH", metadata: {} };
 
 describe("DoorJam tool modes", () => {
   beforeEach(() => {
@@ -105,6 +106,20 @@ describe("DoorJam tool modes", () => {
     mocks.readMetadata.mockReturnValue(metadata);
     await performDoorAction("lock", image);
     expect(mocks.setLocked).toHaveBeenCalledWith(image, metadata, true);
+  });
+
+  it("routes generated PATH doors through operate, link, and lock actions", async () => {
+    const metadata = { renderedState: "open", locked: false };
+    mocks.readMetadata.mockImplementation((item) => item === generated ? metadata : undefined);
+    mocks.toggle.mockResolvedValue({ ok: true }); mocks.link.mockResolvedValue({ ok: true, outcome: "linked-existing", distance: 0, doorCount: 1, needsOpenArtwork: false });
+    mocks.updateItems.mockImplementation(async (_ids, update) => update([generated]));
+    await performDoorAction("operate", generated as never);
+    await performDoorAction("link", generated as never);
+    await performDoorAction("lock", generated as never);
+    expect(mocks.toggle).toHaveBeenCalledWith("generated");
+    expect(mocks.link).toHaveBeenCalledWith(generated, expect.any(Function), "dynamic-fog");
+    expect(mocks.setLocked).toHaveBeenCalledWith(generated, metadata, true);
+    expect(mocks.openImages).not.toHaveBeenCalled();
   });
 
   it("does not reuse reserved or duplicate shortcuts", () => {

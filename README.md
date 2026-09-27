@@ -49,6 +49,6 @@ By default, players can operate unlocked doors from the DoorJam tool, context me
 
 While the DoorJam tool is active for the GM, each configured door displays centered lock and Dynamic Fog link status glyphs. Double-click the lock glyph to toggle the door lock. Double-click the linked glyph to unlink it; double-click the unlinked glyph to link a nearby Dynamic Fog door or create one along an intersecting fog edge when no door is in range.
 
-The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.15.0.json`).
+The production extension is hosted at `https://doorjam.ex-asperis.com`. Install it in Owlbear Rodeo using `https://doorjam.ex-asperis.com/manifest.json` (or the version-pinned `manifest-v0.16.0.json`).
 
 Private fog-provider metadata is isolated in `src/dynamicFog/adapter.ts` and `src/smoke/adapter.ts`. Stage Manager communication is isolated in `src/stageManager/adapter.ts` and uses only its public request/result API.

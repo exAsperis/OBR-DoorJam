@@ -1,4 +1,4 @@
-import OBR, { buildShape, isImage, type ToolEvent } from "@owlbear-rodeo/sdk";
+import OBR, { buildShape, type ToolEvent } from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "../constants";
 import { DYNAMIC_FOG_DOOR_INDEX_KEY, enumerateDoors, resolveManualDoorTarget } from "../dynamicFog/adapter";
 import { linkDynamicFogDoor } from "../doorJam/linking";
@@ -56,7 +56,7 @@ export async function setupDynamicFogSelectionMode(): Promise<() => void> {
       const resolved = resolveManualDoorTarget(targetSnapshot, parents);
       if (!resolved.ok) return false;
       const image = (await OBR.scene.items.getItems([imageId]))[0];
-      if (!image || !isImage(image)) { await cancel(); return false; }
+      if (!image) { await cancel(); return false; }
       const result = await linkDynamicFogDoor(image, resolved.ref);
       await cancel();
       if (!result.ok) await OBR.notification.show(result.message, "ERROR");

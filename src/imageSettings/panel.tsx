@@ -44,7 +44,7 @@ export function ImageSettingsPanel({ targetImageId }: { targetImageId?: string |
 
   const metadata = readDoorJamMetadata(image);
   const openUrl = metadata?.openImage?.image.url;
-  const closedUrl = metadata?.closedImage.image.url ?? image.image.url;
+  const closedUrl = metadata?.closedImage?.image.url ?? image.image.url;
   const select = async (state: "open" | "closed") => {
     setBusy(state);
     try {

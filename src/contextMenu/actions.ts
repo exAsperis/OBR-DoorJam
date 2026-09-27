@@ -1,5 +1,5 @@
 import OBR from "@owlbear-rodeo/sdk";
-import { CONTEXT_MENU_HEIGHT_CHANNEL, EXTENSION_ID } from "../constants";
+import { CONTEXT_MENU_HEIGHT_CHANNEL, EXTENSION_ID, GENERATED_DOOR_METADATA_KEY } from "../constants";
 
 const icon = "/icon.svg";
 const imageFilter = { min: 1, max: 1, every: [{ key: "type", value: "IMAGE" }] };
@@ -11,6 +11,8 @@ export async function setupContextMenu(): Promise<() => void> {
     icons: [
       { icon, label: "DoorJam", filter: { ...imageFilter, roles: ["GM"], permissions: ["UPDATE"] } },
       { icon, label: "DoorJam", filter: { ...imageFilter, roles: ["PLAYER"] } },
+      { icon, label: "DoorJam", filter: { min: 1, max: 1, every: [{ key: "type", value: "PATH" }, { key: ["metadata", GENERATED_DOOR_METADATA_KEY], value: undefined, operator: "!=" }], roles: ["GM"], permissions: ["UPDATE"] } },
+      { icon, label: "DoorJam", filter: { min: 1, max: 1, every: [{ key: "type", value: "PATH" }, { key: ["metadata", GENERATED_DOOR_METADATA_KEY], value: undefined, operator: "!=" }], roles: ["PLAYER"] } },
     ],
     embed: { url: "/context-menu.html", height },
   });

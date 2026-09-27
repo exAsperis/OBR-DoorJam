@@ -35,6 +35,14 @@ describe("door status overlay actions", () => {
     expect(mocks.setLocked).toHaveBeenCalledWith(door, metadata, true);
   });
 
+  it("applies the same overlay actions to generated PATH doors", async () => {
+    const metadata = { version: 4, renderedState: "open", locked: false };
+    mocks.door.type = "PATH"; mocks.read.mockReturnValue(metadata);
+    expect(await handleDoorOverlayDoubleClick(event("lock"))).toBe(true);
+    expect(mocks.setLocked).toHaveBeenCalledWith(mocks.door, metadata, true);
+    mocks.door.type = "IMAGE";
+  });
+
   it("unlinks a linked door from its link glyph", async () => {
     const metadata = { version: 4, renderedState: "closed", links: { dynamicFog: { fogItemId: "fog", doorIndex: 0 } } };
     mocks.read.mockReturnValue(metadata);

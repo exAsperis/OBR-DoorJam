@@ -2,10 +2,12 @@ import OBR, { isImage } from "@owlbear-rodeo/sdk";
 import { DOORJAM_OPERATE_CHANNEL } from "../constants";
 import { setStageManagerElevatorDisabled } from "../stageManager/adapter";
 import { renderDoorImage } from "./artwork";
-import { readDoorJamMetadata, type DoorLinkKind } from "./metadata";
+import { readDoorJamMetadata, writeDoorJamMetadata, type DoorLinkKind } from "./metadata";
 import { setDynamicFogDoorState, setSmokeLinkedDoorState } from "./providers";
 import { getDoorJamSettings } from "./settings";
 import { withDoorSynchronizationSuppressed } from "./synchronization";
+import { readGeneratedDoorSpec } from "../generatedDoors/metadata";
+import { applyGeneratedDoorGeometry } from "../generatedDoors/createGeneratedDoor";
 
 export interface DoorIntegrationWarning { integration: DoorLinkKind; message: string }
 export type DoorStateCommandResult =
@@ -21,16 +23,21 @@ async function playerMayOperate(locked: boolean): Promise<DoorStateCommandResult
 
 async function operateLocally(imageId: string, open: boolean, enforcePlayerPolicy: boolean): Promise<DoorStateCommandResult> {
   const image = (await OBR.scene.items.getItems([imageId]))[0];
-  if (!image || !isImage(image)) return { ok: false, reason: "invalid-image" };
+  if (!image) return { ok: false, reason: "invalid-image" };
   const metadata = readDoorJamMetadata(image);
   if (!metadata) return { ok: false, reason: "invalid-link" };
   if (enforcePlayerPolicy) {
     if (metadata.locked === true) return { ok: false, reason: "locked" };
     if (!(await getDoorJamSettings()).playersCanOperate) return { ok: false, reason: "player-operation-disabled" };
   }
-  if (open && !metadata.openImage) return { ok: false, reason: "missing-open-artwork" };
+  if (isImage(image) && open && !metadata.openImage) return { ok: false, reason: "missing-open-artwork" };
   return withDoorSynchronizationSuppressed(image.id, async () => {
-  if (await renderDoorImage(image.id, open) !== "updated") return { ok: false, reason: "render-failed" } as DoorStateCommandResult;
+  if (isImage(image)) {
+    if (await renderDoorImage(image.id, open) !== "updated") return { ok: false, reason: "render-failed" } as DoorStateCommandResult;
+  } else {
+    const dpi = await OBR.scene.grid.getDpi();
+    await OBR.scene.items.updateItems([image.id], (items) => { const item = items[0]; const current = item && readDoorJamMetadata(item); const spec = readGeneratedDoorSpec(item); if (item && current && spec) { applyGeneratedDoorGeometry(item, spec.type.includes("swing") && !open ? { ...spec, openAngle: 0 } : spec, dpi); current.renderedState = open ? "open" : "closed"; writeDoorJamMetadata(item, current); } });
+  }
   const updates: Array<Promise<{ kind: DoorLinkKind; ok: boolean; message?: string }>> = [];
   const guarded = async (kind: DoorLinkKind, update: () => Promise<{ ok: boolean; reason?: string; message?: string }>) => {
     try {
@@ -56,7 +63,7 @@ async function operateLocally(imageId: string, open: boolean, enforcePlayerPolic
 export async function setLinkedDoorState(imageId: string, open: boolean): Promise<DoorStateCommandResult> {
   try {
     const image = (await OBR.scene.items.getItems([imageId]))[0];
-    if (!image || !isImage(image)) return { ok: false, reason: "invalid-image" };
+    if (!image) return { ok: false, reason: "invalid-image" };
     const metadata = readDoorJamMetadata(image);
     if (!metadata) return { ok: false, reason: "invalid-link" };
     const denied = await playerMayOperate(metadata.locked === true);
@@ -72,7 +79,7 @@ export async function setLinkedDoorState(imageId: string, open: boolean): Promis
 export async function toggleLinkedDoorState(imageId: string): Promise<DoorStateCommandResult> {
   try {
     const image = (await OBR.scene.items.getItems([imageId]))[0];
-    if (!image || !isImage(image)) return { ok: false, reason: "invalid-image" };
+    if (!image) return { ok: false, reason: "invalid-image" };
     const metadata = readDoorJamMetadata(image);
     if (!metadata) return { ok: false, reason: "invalid-link" };
     return setLinkedDoorState(imageId, metadata.renderedState !== "open");
@@ -82,7 +89,7 @@ export async function toggleLinkedDoorState(imageId: string): Promise<DoorStateC
 export async function handlePlayerDoorOperation(imageId: string, open?: boolean): Promise<DoorStateCommandResult> {
   try {
     const image = (await OBR.scene.items.getItems([imageId]))[0];
-    if (!image || !isImage(image)) return { ok: false, reason: "invalid-image" };
+    if (!image) return { ok: false, reason: "invalid-image" };
     const metadata = readDoorJamMetadata(image);
     if (!metadata) return { ok: false, reason: "invalid-link" };
     return operateLocally(imageId, typeof open === "boolean" ? open : metadata.renderedState !== "open", true);

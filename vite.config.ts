@@ -16,6 +16,7 @@ export default defineConfig({
         elevatorLink: "elevator-link.html",
         breakLink: "break-link.html",
         dynamicFogLink: "dynamic-fog-link.html",
+        generatedDoor: "generated-door.html",
       },
     },
   },

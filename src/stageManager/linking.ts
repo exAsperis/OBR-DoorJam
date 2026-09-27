@@ -1,4 +1,4 @@
-import OBR, { isImage, type BoundingBox, type Image, type Item } from "@owlbear-rodeo/sdk";
+import OBR, { isImage, type BoundingBox, type Item } from "@owlbear-rodeo/sdk";
 import { snapshotArtwork } from "../doorJam/artwork";
 import { openDoorImagesPopover } from "../doorJam/imagesPopover";
 import { readDoorJamMetadata, writeDoorJamMetadata } from "../doorJam/metadata";
@@ -16,7 +16,7 @@ function distance(a: BoundingBox, b: BoundingBox): number {
   const dy = Math.max(a.min.y - b.max.y, b.min.y - a.max.y, 0);
   return Math.hypot(dx, dy);
 }
-export async function rankElevatorCandidates(door: Image, elevators: StageManagerElevator[]): Promise<ElevatorCandidate[]> {
+export async function rankElevatorCandidates(door: Item, elevators: StageManagerElevator[]): Promise<ElevatorCandidate[]> {
   const items = await OBR.scene.items.getItems(elevators.map((elevator) => elevator.itemId));
   const byId = new Map(items.map((item) => [item.id, item]));
   const doorBounds = await OBR.scene.items.getItemBounds([door.id]);
@@ -31,19 +31,19 @@ export async function rankElevatorCandidates(door: Image, elevators: StageManage
 
 export async function linkStageManagerElevator(imageId: string, elevatorItemId: string): Promise<LinkStageManagerResult> {
   const image = (await OBR.scene.items.getItems([imageId]))[0];
-  if (!image || !isImage(image)) return { ok: false, message: "The DoorJam image no longer exists." };
+  if (!image) return { ok: false, message: "The DoorJam door no longer exists." };
   let needsOpenArtwork = true;
   let desiredOpen = false;
   await OBR.scene.items.updateItems([imageId], (items) => {
     const target = items[0];
-    if (!target || !isImage(target)) return;
+    if (!target) return;
     const existing = readDoorJamMetadata(target);
-    needsOpenArtwork = !existing?.openImage;
+    needsOpenArtwork = isImage(target) && !existing?.openImage;
     desiredOpen = existing?.renderedState === "open";
     writeDoorJamMetadata(target, {
       version: 4,
       links: { ...existing?.links, stageManager: { itemIds: [...new Set([...(existing?.links?.stageManager?.itemIds ?? []), elevatorItemId])] } },
-      closedImage: existing?.closedImage ?? snapshotArtwork(target),
+      closedImage: existing?.closedImage ?? (isImage(target) ? snapshotArtwork(target) : undefined),
       openImage: existing?.openImage,
       renderedState: existing?.renderedState ?? "closed",
       locked: existing?.locked,
@@ -57,7 +57,7 @@ export async function unlinkStageManagerElevator(imageId: string, elevatorItemId
   let removed = false;
   await OBR.scene.items.updateItems([imageId], (items) => {
     const target = items[0];
-    if (!target || !isImage(target)) return;
+    if (!target) return;
     const existing = readDoorJamMetadata(target);
     if (!existing?.links?.stageManager?.itemIds.includes(elevatorItemId)) return;
     const itemIds = existing.links.stageManager.itemIds.filter((itemId) => itemId !== elevatorItemId);
@@ -70,7 +70,7 @@ export async function unlinkStageManagerElevator(imageId: string, elevatorItemId
   return removed;
 }
 
-export async function discoverAndLinkStageManager(image: Image): Promise<LinkStageManagerResult | { ok: true; choosing: true }> {
+export async function discoverAndLinkStageManager(image: Item): Promise<LinkStageManagerResult | { ok: true; choosing: true }> {
   const listed = await listStageManagerElevators();
   if (!listed.ok) return { ok: false, message: listed.message };
   if (!listed.value.length) return { ok: false, message: "No Stage Manager Elevators are configured in this scene." };

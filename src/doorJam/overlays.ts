@@ -1,4 +1,4 @@
-import OBR, { buildBillboard, isImage, type Image, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
+import OBR, { buildBillboard, type Item, type ToolEvent } from "@owlbear-rodeo/sdk";
 import { EXTENSION_ID } from "../constants";
 import { lookupDynamicFogDoor, INTEGRATION_NAMES } from "./providers";
 import { linkNearbyDoorOrCreate } from "./linking";
@@ -71,7 +71,7 @@ export function doorOverlayDefinitions(locked: boolean, linkState: LinkOverlaySt
   ];
 }
 
-async function buildDoorOverlays(image: Image): Promise<Item[]> {
+async function buildDoorOverlays(image: Item): Promise<Item[]> {
   const metadata = readDoorJamMetadata(image);
   if (!metadata) return [];
   const bounds = await OBR.scene.items.getItemBounds([image.id]);
@@ -118,7 +118,7 @@ export async function refreshDoorOverlays(): Promise<void> {
     await clearOverlays();
     if (await OBR.player.getRole() !== "GM" || !(await OBR.scene.isReady()) || await OBR.tool.getActiveTool() !== `${EXTENSION_ID}/tool`) return;
     const sceneItems = await OBR.scene.items.getItems();
-    const doors = sceneItems.filter((item): item is Image => isImage(item) && Boolean(readDoorJamMetadata(item)));
+    const doors = sceneItems.filter((item) => Boolean(readDoorJamMetadata(item)));
     const overlays = (await Promise.all(doors.map(buildDoorOverlays))).flat();
     if (request !== refreshRequest) return;
     if (overlays.length) await OBR.scene.local.addItems(overlays);
@@ -131,7 +131,7 @@ export async function handleDoorOverlayDoubleClick(event: ToolEvent): Promise<bo
   const overlay = await resolveOverlay(event);
   if (!overlay || await OBR.player.getRole() !== "GM" || !(await OBR.scene.isReady())) return false;
   const door = (await OBR.scene.items.getItems([overlay.doorId]))[0];
-  if (!door || !isImage(door)) return false;
+  if (!door) return false;
   const metadata = readDoorJamMetadata(door);
   if (!metadata) return false;
 

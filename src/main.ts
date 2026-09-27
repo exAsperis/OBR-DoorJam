@@ -6,6 +6,8 @@ import { handlePlayerDoorOperation } from "./doorJam/control";
 import { setupDoorOverlays } from "./doorJam/overlays";
 import { setupDoorJamTool } from "./tool/actions";
 import { getToolPreferences } from "./tool/preferences";
+import { GeneratedDoorScaleReconciler } from "./generatedDoors/reconcileGeneratedDoorScale";
+import { setupGeneratedDoorPopoverMovement } from "./generatedDoors/popover";
 
 let cleanup: (() => void) | undefined;
 let configuredRole: "GM" | "PLAYER" | undefined;
@@ -20,6 +22,8 @@ async function configureForRole() {
   const removeTool = await setupDoorJamTool(toolPreferences);
   const removeOverlays = role === "GM" ? await setupDoorOverlays() : undefined;
   let removeItems: (() => void) | undefined;
+  const scaleReconciler = new GeneratedDoorScaleReconciler();
+  const removeGeneratedDoorPopoverMovement = setupGeneratedDoorPopoverMovement();
   let removeOperate: (() => void) | undefined;
   if (role === "GM") {
     removeOperate = OBR.broadcast.onMessage(DOORJAM_OPERATE_CHANNEL, (event) => {
@@ -34,11 +38,12 @@ async function configureForRole() {
     removeItems?.(); removeItems = undefined;
     if (!ready || role !== "GM") return;
     await synchronizeScene();
-    removeItems = OBR.scene.items.onChange((items) => void synchronizeFromItems(items).catch(() => undefined));
+    const dpi = await OBR.scene.grid.getDpi();
+    removeItems = OBR.scene.items.onChange((items) => { scaleReconciler.observe(items, dpi); void synchronizeFromItems(items).catch(() => undefined); });
   };
   const removeReady = OBR.scene.onReadyChange((ready) => void attachSceneListener(ready).catch(() => undefined));
   await attachSceneListener(await OBR.scene.isReady());
-  cleanup = () => { removeMenus(); removeTool(); removeOverlays?.(); removeReady(); removeItems?.(); removeOperate?.(); };
+  cleanup = () => { removeGeneratedDoorPopoverMovement(); scaleReconciler.cancel(); removeMenus(); removeTool(); removeOverlays?.(); removeReady(); removeItems?.(); removeOperate?.(); };
 }
 
 OBR.onReady(async () => {

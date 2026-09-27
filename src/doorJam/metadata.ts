@@ -1,5 +1,5 @@
 import type { ImageContent, ImageGrid, Item } from "@owlbear-rodeo/sdk";
-import { DOORJAM_METADATA_KEY } from "../constants";
+import { DOORJAM_METADATA_KEY, GENERATED_DOOR_METADATA_KEY } from "../constants";
 
 export interface DynamicFogLink { fogItemId: string; doorIndex: number }
 export interface SmokeLink { provider?: "smoke"; doorItemId: string }
@@ -15,7 +15,7 @@ export interface DoorImageState { image: ImageContent; grid: ImageGrid }
 export interface DoorJamMetadata {
   version: 4;
   links?: DoorJamLinks;
-  closedImage: DoorImageState;
+  closedImage?: DoorImageState;
   openImage?: DoorImageState;
   renderedState: "open" | "closed";
   locked?: boolean;
@@ -51,7 +51,8 @@ export function readDoorJamMetadata(item: Item): DoorJamMetadata | null {
   if (!data || ![1, 2, 3, 4].includes(Number(data.version))) return null;
   const closedImage = object(data.closedImage);
   const image = object(closedImage?.image);
-  if (typeof image?.url !== "string" || !closedImage?.grid || typeof closedImage.grid !== "object"
+  const generated = Boolean(item.metadata[GENERATED_DOOR_METADATA_KEY]);
+  if ((!generated && (typeof image?.url !== "string" || !closedImage?.grid || typeof closedImage.grid !== "object"))
     || (data.renderedState !== "open" && data.renderedState !== "closed")) return null;
   let links = Number(data.version) === 4 ? readLinks(data.links) : undefined;
   if (Number(data.version) < 4) {
@@ -64,7 +65,7 @@ export function readDoorJamMetadata(item: Item): DoorJamMetadata | null {
   return {
     version: 4,
     ...(links ? { links } : {}),
-    closedImage: data.closedImage as unknown as DoorImageState,
+    ...(data.closedImage ? { closedImage: data.closedImage as unknown as DoorImageState } : {}),
     ...(data.openImage ? { openImage: data.openImage as DoorImageState } : {}),
     renderedState: data.renderedState,
     ...(typeof data.locked === "boolean" ? { locked: data.locked } : {}),
