@@ -14,8 +14,8 @@ const labels = { "single-swing": "Single Swing", "double-swing": "Double Swing",
 export function GeneratedDoorPopover() {
   const itemId = new URLSearchParams(location.search).get("itemId"); const [dpi, setDpi] = useState(100); const [spec, setSpec] = useState<GeneratedDoorSpec | null>(null); const [collapsed, setCollapsed] = useState(false);
   useEffect(() => { let active = true, removeTheme: (() => void) | undefined; OBR.onReady(async () => { applyOwlbearTheme(await OBR.theme.getTheme()); removeTheme = OBR.theme.onChange(applyOwlbearTheme); const sceneDpi = await OBR.scene.grid.getDpi(); let value = await getGeneratedDoorSettings(); if (itemId) { const item = (await OBR.scene.items.getItems([itemId]))[0]; const stored = readGeneratedDoorSpec(item); if (stored && item) value = { ...stored, placementRotation: item.rotation }; } if (active) { setDpi(sceneDpi); setSpec(value); } }); return () => { active = false; removeTheme?.(); }; }, [itemId]);
-  const openGeometry = useMemo(() => spec ? generateDoorGeometry(spec, { dpi }) : null, [spec, dpi]);
-  const closedGeometry = useMemo(() => spec ? generateDoorGeometry(spec.type.includes("swing") ? { ...spec, openAngle: 0 } : spec, { dpi }) : null, [spec, dpi]);
+  const openGeometry = useMemo(() => spec ? generateDoorGeometry(spec, { dpi, open: true }) : null, [spec, dpi]);
+  const closedGeometry = useMemo(() => spec ? generateDoorGeometry(spec.type.includes("swing") ? { ...spec, openAngle: 0 } : spec, { dpi, open: false }) : null, [spec, dpi]);
   if (!spec || !openGeometry || !closedGeometry) return <main>Loading…</main>;
   const change = async (next: GeneratedDoorSpec, updateRotation = false) => { setSpec(next); if (itemId) await updateGeneratedDoor(itemId, next, dpi, updateRotation); else { await setGeneratedDoorSettings(next); await OBR.broadcast.sendMessage(GENERATED_DOOR_SETTINGS_CHANNEL, next, { destination: "LOCAL" }); } };
   const cells = (pixels: number | undefined, fallback: number) => Number(((pixels ?? fallback) / dpi).toFixed(2)); const fromCells = (value: string) => Math.max(0.04, Number(value) || 0.04) * dpi;
@@ -31,7 +31,8 @@ export function GeneratedDoorPopover() {
     <label>Width (grid cells)<input type="number" min="0.04" step="0.1" value={cells(spec.width, dpi)} onChange={(e) => void change({ ...spec, width: fromCells(e.target.value) })}/></label>
     {spec.type === "trap" ? <label>Depth (grid cells)<input type="number" min="0.04" step="0.1" value={cells(spec.depth, dpi)} onChange={(e) => void change({ ...spec, depth: fromCells(e.target.value) })}/></label> : <label>Thickness (grid cells)<input type="number" min="0.04" step="0.02" value={cells(spec.thickness, dpi*.16)} onChange={(e) => void change({ ...spec, thickness: fromCells(e.target.value) })}/></label>}
     {spec.type === "single-swing" && <label>Hinge side<select value={spec.hingeSide ?? "left"} onChange={(e) => void change({ ...spec, hingeSide: e.target.value as "left"|"right" })}><option value="left">Left</option><option value="right">Right</option></select></label>}
-    {spec.type.includes("swing") && <label>Open angle<input type="range" min="0" max="90" value={spec.openAngle ?? 0} onChange={(e) => void change({ ...spec, openAngle: Number(e.target.value) })}/><output>{spec.openAngle ?? 0}°</output></label>}
+    {spec.type.includes("swing") && <label>Open angle<input type="range" min="0" max="135" value={spec.openAngle ?? 0} onChange={(e) => void change({ ...spec, openAngle: Number(e.target.value) })}/><output>{spec.openAngle ?? 0}°</output></label>}
+    {(spec.type.includes("swing") || spec.type === "trap") && <label>Knob / latch<input type="checkbox" checked={spec.showKnob === true} onChange={(e) => void change({ ...spec, showKnob: e.target.checked })}/></label>}
     <label>Rotation<input type="number" step="5" value={spec.placementRotation} onChange={(e) => void change({ ...spec, placementRotation: Number(e.target.value) || 0 }, true)}/></label></section>
   </main>;
 }
