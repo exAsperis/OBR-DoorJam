@@ -39,6 +39,7 @@ async function configureForRole() {
     if (!ready || role !== "GM") return;
     await synchronizeScene();
     const dpi = await OBR.scene.grid.getDpi();
+    scaleReconciler.observe(await OBR.scene.items.getItems(), dpi);
     removeItems = OBR.scene.items.onChange((items) => { scaleReconciler.observe(items, dpi); void synchronizeFromItems(items).catch(() => undefined); });
   };
   const removeReady = OBR.scene.onReadyChange((ready) => void attachSceneListener(ready).catch(() => undefined));

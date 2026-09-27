@@ -36,7 +36,7 @@ async function operateLocally(imageId: string, open: boolean, enforcePlayerPolic
     if (await renderDoorImage(image.id, open) !== "updated") return { ok: false, reason: "render-failed" } as DoorStateCommandResult;
   } else {
     const dpi = await OBR.scene.grid.getDpi();
-    await OBR.scene.items.updateItems([image.id], (items) => { const item = items[0]; const current = item && readDoorJamMetadata(item); const spec = readGeneratedDoorSpec(item); if (item && current && spec) { applyGeneratedDoorGeometry(item, spec.type.includes("swing") && !open ? { ...spec, openAngle: 0 } : spec, dpi, open); current.renderedState = open ? "open" : "closed"; writeDoorJamMetadata(item, current); } });
+    await OBR.scene.items.updateItems([image.id], (items) => { const item = items[0]; const current = item && readDoorJamMetadata(item); const spec = readGeneratedDoorSpec(item); if (item && current && spec) { applyGeneratedDoorGeometry(item, spec.type === "swing" && !open ? { ...spec, openAngle: 0 } : spec, dpi, open); current.renderedState = open ? "open" : "closed"; writeDoorJamMetadata(item, current); } });
   }
   const updates: Array<Promise<{ kind: DoorLinkKind; ok: boolean; message?: string }>> = [];
   const guarded = async (kind: DoorLinkKind, update: () => Promise<{ ok: boolean; reason?: string; message?: string }>) => {

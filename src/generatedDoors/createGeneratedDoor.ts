@@ -4,13 +4,13 @@ import { generateDoorGeometry } from "./geometry";
 import { writeGeneratedDoorSpec } from "./metadata";
 import type { GeneratedDoorSpec } from "./types";
 
-export function generatedDoorName(type: GeneratedDoorSpec["type"]): string {
-  return type === "trap" ? "DoorJam Trap Door" : type === "double-swing" ? "DoorJam Double Door" : type.includes("slide") ? "DoorJam Sliding Door" : "DoorJam Door";
+export function generatedDoorName(type: GeneratedDoorSpec["type"], leaves: GeneratedDoorSpec["leaves"] = "single"): string {
+  return type === "trap" ? leaves === "double" ? "DoorJam Double Trap Door" : "DoorJam Trap Door" : type === "slide" || type === "pocket" ? leaves === "double" ? "DoorJam Double Sliding Door" : "DoorJam Sliding Door" : leaves === "double" ? "DoorJam Double Door" : "DoorJam Door";
 }
 export function buildGeneratedDoorPath(spec: GeneratedDoorSpec, dpi: number, position = { x: 0, y: 0 }, rotation = spec.placementRotation, opacity = 1, id?: string): Path {
-  const geometry = generateDoorGeometry(spec.type.includes("swing") ? { ...spec, openAngle: 0 } : spec, { dpi, open: false });
+  const geometry = generateDoorGeometry(spec.type === "swing" ? { ...spec, openAngle: 0 } : spec, { dpi, open: false });
   const builder = buildPath(); if (id) builder.id(id);
-  return builder.name(generatedDoorName(spec.type)).commands(geometry.commands).fillRule(geometry.fillRule ?? "nonzero")
+  return builder.name(generatedDoorName(spec.type, spec.leaves)).commands(geometry.commands).fillRule(geometry.fillRule ?? "nonzero")
     .fillColor(geometry.fillColor).fillOpacity(opacity).strokeColor(geometry.strokeColor).strokeOpacity(opacity).strokeWidth(geometry.strokeWidth).strokeDash([])
     .position(position).rotation(rotation).scale({ x: 1, y: 1 }).layer("PROP")
     .metadata({ [GENERATED_DOOR_METADATA_KEY]: { ...spec, version: 1 }, [DOORJAM_METADATA_KEY]: { version: 4, renderedState: "closed" } }).build();
@@ -22,8 +22,8 @@ export async function createGeneratedDoor(spec: GeneratedDoorSpec, position: { x
 export function applyGeneratedDoorUpdate(item: Item, spec: GeneratedDoorSpec, dpi: number, updateRotation = false): boolean {
   if (!isPath(item)) return false;
   const doorMetadata = item.metadata[DOORJAM_METADATA_KEY]; const renderedOpen = Boolean(doorMetadata && typeof doorMetadata === "object" && (doorMetadata as { renderedState?: string }).renderedState === "open");
-  applyGeneratedDoorGeometry(item, spec.type.includes("swing") && !renderedOpen ? { ...spec, openAngle: 0 } : spec, dpi, renderedOpen);
-  item.name = generatedDoorName(spec.type); item.scale = { x: 1, y: 1 };
+  applyGeneratedDoorGeometry(item, spec.type === "swing" && !renderedOpen ? { ...spec, openAngle: 0 } : spec, dpi, renderedOpen);
+  item.name = generatedDoorName(spec.type, spec.leaves); item.scale = { x: 1, y: 1 };
   if (updateRotation) item.rotation = spec.placementRotation;
   writeGeneratedDoorSpec(item, spec);
   return true;

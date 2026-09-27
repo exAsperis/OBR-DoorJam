@@ -68,7 +68,7 @@ describe("door operation authorization", () => {
   it("regenerates generated swing doors when operated", async () => {
     const generated = { id: "generated", type: "PATH", metadata: {} };
     const metadata = { version: 4, renderedState: "closed" as const };
-    const spec = { version: 1, type: "single-swing", style: "plain", width: 100, thickness: 25, color: "#8b5a2b", hingeSide: "left", openAngle: 90, placementRotation: 0 };
+    const spec = { version: 1, type: "swing", leaves: "single", style: "plain", width: 100, thickness: 25, color: "#8b5a2b", hingeSide: "left", openAngle: 90, placementRotation: 0 };
     mocks.role.mockResolvedValue("GM"); mocks.getItems.mockResolvedValue([generated]); mocks.read.mockReturnValue(metadata); mocks.readGenerated.mockReturnValue(spec); mocks.updateItems.mockImplementation(async (_ids, update) => update([generated]));
     await expect(toggleLinkedDoorState("generated")).resolves.toEqual({ ok: true });
     expect(mocks.applyGenerated).toHaveBeenCalledWith(generated, expect.objectContaining({ openAngle: 90 }), 100, true);
