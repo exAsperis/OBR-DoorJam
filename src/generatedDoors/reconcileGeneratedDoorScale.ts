@@ -13,6 +13,15 @@ export function absorbScaleIntoSpec(spec: GeneratedDoorSpec, scale: { x: number;
 }
 const isUnitScale = (scale: { x: number; y: number }) => Math.abs(scale.x - 1) < 0.001 && Math.abs(scale.y - 1) < 0.001;
 const sameScale = (left: { x: number; y: number }, right: { x: number; y: number }) => Math.abs(left.x - right.x) < 0.0001 && Math.abs(left.y - right.y) < 0.0001;
+const COLLAPSED_SCALE_EPSILON = 0.001;
+
+/**
+ * A zero scale is also used by extensions such as Stage Manager to hide an
+ * item temporarily. It is not a meaningful generated-door dimension.
+ */
+export function isCollapsedGeneratedDoorScale(scale: { x: number; y: number }) {
+  return Math.abs(scale.x) < COLLAPSED_SCALE_EPSILON || Math.abs(scale.y) < COLLAPSED_SCALE_EPSILON;
+}
 
 function commandBounds(commands: PathCommand[]) {
   const points: Array<{ x: number; y: number }> = [];
@@ -45,6 +54,7 @@ export function detectGeneratedDoorScale(item: Item, spec: GeneratedDoorSpec, dp
 export function reconcileGeneratedDoorItem(item: Item, dpi: number): boolean {
   const spec = readGeneratedDoorSpec(item);
   if (!spec) return false;
+  if (isCollapsedGeneratedDoorScale(item.scale)) return false;
   const effectiveScale = detectGeneratedDoorScale(item, spec, dpi);
   if (isUnitScale(effectiveScale)) return false;
   const nextSpec = absorbScaleIntoSpec(spec, effectiveScale, dpi);
@@ -76,6 +86,11 @@ export class GeneratedDoorScaleReconciler {
     for (const item of items) {
       const spec = readGeneratedDoorSpec(item);
       if (!spec) continue;
+      if (isCollapsedGeneratedDoorScale(item.scale)) {
+        this.previousScales.set(item.id, { x: Math.abs(item.scale.x), y: Math.abs(item.scale.y) });
+        this.clearTimer(item.id);
+        continue;
+      }
       const current = detectGeneratedDoorScale(item, spec, dpi);
       const previous = this.previousScales.get(item.id);
       this.previousScales.set(item.id, current);
