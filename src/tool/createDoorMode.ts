@@ -27,15 +27,18 @@ export async function setupCreateDoorMode(): Promise<() => void> {
     const current = await OBR.scene.local.getItems<Path>((item) => item.id === GENERATED_DOOR_GHOST_ID);
     if (!current.length) await OBR.scene.local.addItems([next]); else await OBR.scene.local.updateItems(current, (items) => { const item = items[0]; if (!item || !isPath(item)) return; item.commands = next.commands; item.style = next.style; item.fillRule = next.fillRule; item.position = next.position; item.rotation = next.rotation; item.scale = { x: 1, y: 1 }; }, true);
   };
-  const commit = async () => { if (!drag) return; const fit = fitted(); const distance = Math.hypot(drag.current.x - drag.start.x, drag.current.y - drag.start.y); const click = distance < 4 / Math.max(await OBR.viewport.getScale(), 0.01); const final = click ? { spec, position: drag.start, rotation: spec.placementRotation } : fit; drag = null; if (final.position) await createGeneratedDoor(final.spec, final.position, final.rotation, dpi); await renderGhost(); };
+  const commitDrag = async () => { if (!drag) return; const final = fitted(); drag = null; if (final.position) await createGeneratedDoor(final.spec, final.position, final.rotation, dpi); await renderGhost(); };
+  const stamp = async (position: Vector2) => { pointer = position; await createGeneratedDoor(spec, position, spec.placementRotation, dpi); await renderGhost(); };
   const removeSettings = OBR.broadcast.onMessage(GENERATED_DOOR_SETTINGS_CHANNEL, (event) => { if (!event.data || typeof event.data !== "object") return; spec = event.data as GeneratedDoorSpec; void renderGhost(); });
   await OBR.tool.removeMode(CREATE_DOOR_MODE_ID);
-  await OBR.tool.createMode({ id: CREATE_DOOR_MODE_ID, icons: [{ icon: "/tool-create-door.svg", label: "Generate Door", filter: { activeTools: [DOORJAM_TOOL_ID], roles: ["GM"] } }], disabled: { roles: ["PLAYER"] }, shortcut: CREATE_DOOR_MODE_SHORTCUT, preventDrag: { activeTools: [DOORJAM_TOOL_ID], activeModes: [CREATE_DOOR_MODE_ID] }, cursors: [{ cursor: "crosshair", filter: { activeTools: [DOORJAM_TOOL_ID], activeModes: [CREATE_DOOR_MODE_ID] } }],
+  await OBR.tool.createMode({ id: CREATE_DOOR_MODE_ID, icons: [{ icon: "/tool-create-door.svg", label: "Generate Door", filter: { activeTools: [DOORJAM_TOOL_ID], roles: ["GM"] } }], disabled: { roles: ["PLAYER"] }, shortcut: CREATE_DOOR_MODE_SHORTCUT, cursors: [{ cursor: "crosshair", filter: { activeTools: [DOORJAM_TOOL_ID], activeModes: [CREATE_DOOR_MODE_ID] } }],
     onActivate: () => { active = true; void (async () => { dpi = await OBR.scene.grid.getDpi(); spec = await getGeneratedDoorSettings(dpi); await openGeneratedDoorPopover(); })(); },
     onDeactivate: () => { active = false; drag = null; pointer = null; void clearGhost(); void closeGeneratedDoorPopover(); },
-    onToolDown: (_context, event: ToolEvent) => { pointer = event.pointerPosition; drag = { start: event.pointerPosition, current: event.pointerPosition }; void renderGhost(); },
-    onToolMove: (_context, event: ToolEvent) => { pointer = event.pointerPosition; if (drag) drag.current = event.pointerPosition; void renderGhost(); },
-    onToolUp: (_context, event: ToolEvent) => { pointer = event.pointerPosition; if (drag) drag.current = event.pointerPosition; void commit(); },
+    onToolClick: (_context, event: ToolEvent) => { void stamp(event.pointerPosition); return false; },
+    onToolMove: (_context, event: ToolEvent) => { pointer = event.pointerPosition; void renderGhost(); },
+    onToolDragStart: (_context, event: ToolEvent) => { pointer = event.pointerPosition; drag = { start: event.pointerPosition, current: event.pointerPosition }; void renderGhost(); },
+    onToolDragMove: (_context, event: ToolEvent) => { pointer = event.pointerPosition; if (drag) drag.current = event.pointerPosition; void renderGhost(); },
+    onToolDragEnd: (_context, event: ToolEvent) => { pointer = event.pointerPosition; if (drag) drag.current = event.pointerPosition; void commitDrag(); },
     onToolDragCancel: () => { drag = null; void renderGhost(); }, onKeyDown: (_context, event) => { if (event.key === "Escape") { drag = null; void renderGhost(); } },
   });
   return () => { active = false; removeSettings(); void clearGhost(); void closeGeneratedDoorPopover(); void OBR.tool.removeMode(CREATE_DOOR_MODE_ID); };

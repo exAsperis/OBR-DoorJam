@@ -11,6 +11,12 @@ import { applyOwlbearTheme } from "../theme";
 import { closeGeneratedDoorPopover, GENERATED_DOOR_POPOVER_ID } from "../generatedDoors/popover";
 
 const labels = { swing: "Swing", slide: "Slide", pocket: "Pocket", trap: "Trap" } as const;
+function NumberField({ value, min, max, step, label, onCommit }: { value: number; min: number; max?: number; step: number; label: string; onCommit: (value: number) => void }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const commit = () => { const parsed = Number(draft); if (!Number.isFinite(parsed)) { setDraft(String(value)); return; } const next = Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min, parsed)); setDraft(String(next)); onCommit(next); };
+  return <input aria-label={label} type="number" min={min} max={max} step={step} value={draft} onChange={(event) => setDraft(event.target.value)} onBlur={commit} onKeyDown={(event) => { if (event.key === "Enter") { commit(); event.currentTarget.blur(); } if (event.key === "Escape") { setDraft(String(value)); event.currentTarget.blur(); } }}/>;
+}
 export function GeneratedDoorPopover() {
   const itemId = new URLSearchParams(location.search).get("itemId"); const [dpi, setDpi] = useState(100); const [spec, setSpec] = useState<GeneratedDoorSpec | null>(null); const [collapsed, setCollapsed] = useState(false);
   useEffect(() => { let active = true, removeTheme: (() => void) | undefined; OBR.onReady(async () => { applyOwlbearTheme(await OBR.theme.getTheme()); removeTheme = OBR.theme.onChange(applyOwlbearTheme); const sceneDpi = await OBR.scene.grid.getDpi(); let value = await getGeneratedDoorSettings(sceneDpi); if (itemId) { const item = (await OBR.scene.items.getItems([itemId]))[0]; const stored = readGeneratedDoorSpec(item); if (stored && item) value = { ...stored, placementRotation: item.rotation }; } if (active) { setDpi(sceneDpi); setSpec(value); } }); return () => { active = false; removeTheme?.(); }; }, [itemId]);
@@ -18,7 +24,7 @@ export function GeneratedDoorPopover() {
   const closedGeometry = useMemo(() => spec ? generateDoorGeometry(spec.type === "swing" ? { ...spec, openAngle: 0 } : spec, { dpi, open: false }) : null, [spec, dpi]);
   if (!spec || !openGeometry || !closedGeometry) return <main>Loading…</main>;
   const change = async (next: GeneratedDoorSpec, updateRotation = false) => { setSpec(next); if (itemId) await updateGeneratedDoor(itemId, next, dpi, updateRotation); else { await setGeneratedDoorSettings(next, dpi); await OBR.broadcast.sendMessage(GENERATED_DOOR_SETTINGS_CHANNEL, next, { destination: "LOCAL" }); } };
-  const cells = (pixels: number | undefined, fallback: number) => Number(((pixels ?? fallback) / dpi).toFixed(2)); const fromCells = (value: string) => Math.max(0.04, Number(value) || 0.04) * dpi;
+  const cells = (pixels: number | undefined, fallback: number) => Number(((pixels ?? fallback) / dpi).toFixed(2));
   let dragStart: { x: number; y: number } | null = null;
   const startDrag = (event: React.PointerEvent<HTMLElement>) => { dragStart = { x: event.clientX, y: event.clientY }; event.currentTarget.setPointerCapture(event.pointerId); };
   const endDrag = (event: React.PointerEvent<HTMLElement>) => { if (!dragStart) return; const dx = event.clientX - dragStart.x, dy = event.clientY - dragStart.y; dragStart = null; if (Math.abs(dx) + Math.abs(dy) > 2) void OBR.broadcast.sendMessage(GENERATED_DOOR_POPOVER_MOVE_CHANNEL, { dx, dy, itemId }, { destination: "LOCAL" }); };
@@ -29,11 +35,11 @@ export function GeneratedDoorPopover() {
     <label>Leaves<select value={spec.leaves} onChange={(e) => void change({ ...spec, leaves: e.target.value as GeneratedDoorSpec["leaves"] })}><option value="single">Single</option><option value="double">Double</option></select></label>
     <label>Style<select value={spec.style} onChange={(e) => void change({ ...spec, style: e.target.value as GeneratedDoorSpec["style"] })}><option value="plain">Plain</option><option value="paneled">Paneled</option><option value="planked">Planked</option></select></label>
     <label>Color<input type="color" value={spec.color} onChange={(e) => void change({ ...spec, color: e.target.value })}/></label>
-    <label>Width (grid cells)<input type="number" min="0.04" step="0.1" value={cells(spec.width, dpi)} onChange={(e) => void change({ ...spec, width: fromCells(e.target.value) })}/></label>
-    {spec.type === "trap" ? <label>Depth (grid cells)<input type="number" min="0.04" step="0.1" value={cells(spec.depth, dpi)} onChange={(e) => void change({ ...spec, depth: fromCells(e.target.value) })}/></label> : <label>Thickness (grid cells)<input type="number" min="0.04" step="0.02" value={cells(spec.thickness, dpi*.16)} onChange={(e) => void change({ ...spec, thickness: fromCells(e.target.value) })}/></label>}
+    {(spec.type === "swing" || spec.type === "trap") && <label className="switch-row"><span>Knob / latch</span><span className="switch"><input type="checkbox" checked={spec.showKnob === true} onChange={(e) => void change({ ...spec, showKnob: e.target.checked })}/><span className="switch-track" aria-hidden="true"/></span></label>}
+    <label>Width (grid cells)<NumberField label="Width in grid cells" min={0.04} step={0.1} value={cells(spec.width, dpi)} onCommit={(value) => void change({ ...spec, width: value * dpi })}/></label>
+    {spec.type === "trap" ? <label>Depth (grid cells)<NumberField label="Depth in grid cells" min={0.04} step={0.1} value={cells(spec.depth, dpi)} onCommit={(value) => void change({ ...spec, depth: value * dpi })}/></label> : <label>Thickness (grid cells)<NumberField label="Thickness in grid cells" min={0.04} step={0.01} value={cells(spec.thickness, dpi*.25)} onCommit={(value) => void change({ ...spec, thickness: value * dpi })}/></label>}
     {spec.type === "swing" && spec.leaves === "single" && <label>Hinge side<select value={spec.hingeSide ?? "left"} onChange={(e) => void change({ ...spec, hingeSide: e.target.value as "left"|"right" })}><option value="left">Left</option><option value="right">Right</option></select></label>}
-    {spec.type === "swing" && <label>Open angle<input type="range" min="0" max="135" value={spec.openAngle ?? 0} onChange={(e) => void change({ ...spec, openAngle: Number(e.target.value) })}/><output>{spec.openAngle ?? 0}°</output></label>}
-    {(spec.type === "swing" || spec.type === "trap") && <label>Knob / latch<input type="checkbox" checked={spec.showKnob === true} onChange={(e) => void change({ ...spec, showKnob: e.target.checked })}/></label>}
-    <label>Rotation<input type="number" step="5" value={spec.placementRotation} onChange={(e) => void change({ ...spec, placementRotation: Number(e.target.value) || 0 }, true)}/></label></section>
+    {spec.type === "swing" && <label>Open angle<span className="slider-value"><input aria-label="Open angle slider" type="range" min="0" max="135" step="1" value={spec.openAngle ?? 0} onChange={(e) => void change({ ...spec, openAngle: Number(e.target.value) })}/><NumberField label="Open angle in degrees" min={0} max={135} step={1} value={spec.openAngle ?? 0} onCommit={(value) => void change({ ...spec, openAngle: value })}/></span></label>}
+    <label>Rotation<span className="slider-value"><input aria-label="Rotation slider" type="range" min="-180" max="180" step="1" value={spec.placementRotation} onChange={(e) => void change({ ...spec, placementRotation: Number(e.target.value) }, true)}/><NumberField label="Rotation in degrees" min={-180} max={180} step={1} value={spec.placementRotation} onCommit={(value) => void change({ ...spec, placementRotation: value }, true)}/></span></label></section>
   </main>;
 }

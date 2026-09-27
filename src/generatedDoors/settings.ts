@@ -17,8 +17,10 @@ export function readGeneratedDoorSettings(metadata: Record<string, unknown>, dpi
     ...(stored.thickness !== undefined ? { thickness: stored.thickness * ratio } : {}),
     ...(stored.depth !== undefined ? { depth: stored.depth * ratio } : {}),
   };
+  const settingsVersion = raw && typeof raw === "object" && typeof (raw as Record<string, unknown>).settingsUiVersion === "number" ? (raw as Record<string, number>).settingsUiVersion : 1;
+  const repaired = settingsVersion < 2 && scaled.type !== "trap" && Math.abs((scaled.thickness ?? dpi * 0.25) / dpi - 0.04) < 0.0001 ? { ...scaled, thickness: dpi * 0.25 } : scaled;
   const legacyDefaults = stored.type === "swing" && stored.leaves === "single" && stored.style === "plain" && stored.width === 100 && stored.thickness === 18 && stored.openAngle === 0 && stored.color.toLowerCase() === "#8b5a2b";
-  return legacyDefaults ? { ...scaled, thickness: dpi * 0.25, openAngle: 90 } : scaled;
+  return legacyDefaults ? { ...repaired, thickness: dpi * 0.25, openAngle: 90 } : repaired;
 }
 export async function getGeneratedDoorSettings(dpi = 100) { return readGeneratedDoorSettings(await OBR.player.getMetadata(), dpi); }
-export async function setGeneratedDoorSettings(spec: GeneratedDoorSpec, dpi = 100) { await OBR.player.setMetadata({ [GENERATED_DOOR_SETTINGS_KEY]: { ...spec, settingsDpi: dpi } }); }
+export async function setGeneratedDoorSettings(spec: GeneratedDoorSpec, dpi = 100) { await OBR.player.setMetadata({ [GENERATED_DOOR_SETTINGS_KEY]: { ...spec, settingsDpi: dpi, settingsUiVersion: 2 } }); }
