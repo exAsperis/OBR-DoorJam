@@ -39,8 +39,20 @@ async function configureForRole() {
     if (!ready || role !== "GM") return;
     await synchronizeScene();
     const dpi = await OBR.scene.grid.getDpi();
-    scaleReconciler.observe(await OBR.scene.items.getItems(), dpi);
-    removeItems = OBR.scene.items.onChange((items) => { scaleReconciler.observe(items, dpi); void synchronizeFromItems(items).catch(() => undefined); });
+    let polling = false;
+    const observeCurrentItems = async () => {
+      if (polling) return;
+      polling = true;
+      try { scaleReconciler.observe(await OBR.scene.items.getItems(), dpi); }
+      finally { polling = false; }
+    };
+    await observeCurrentItems();
+    const removeItemChange = OBR.scene.items.onChange((items) => { scaleReconciler.observe(items, dpi); void synchronizeFromItems(items).catch(() => undefined); });
+    // Native transform events are occasionally coalesced by OBR. Polling is a
+    // fallback so a generated door with a non-unit scale is still normalized
+    // even when DoorJam is not the active tool.
+    const scaleWatchdog = setInterval(() => void observeCurrentItems().catch(() => undefined), 250);
+    removeItems = () => { removeItemChange(); clearInterval(scaleWatchdog); };
   };
   const removeReady = OBR.scene.onReadyChange((ready) => void attachSceneListener(ready).catch(() => undefined));
   await attachSceneListener(await OBR.scene.isReady());

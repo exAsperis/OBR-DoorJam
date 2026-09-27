@@ -39,6 +39,7 @@ vi.mock("../doorJam/overlays", () => ({
 
 import { DOOR_ACTION_SHORTCUTS, DOORJAM_TOOL_SHORTCUT, performDoorAction, PLAYER_OPERATION_SHORTCUT } from "./actions";
 import { DYNAMIC_FOG_EDITOR_SHORTCUT } from "./dynamicFogEditor";
+import { CREATE_DOOR_MODE_SHORTCUT } from "./createDoorMode";
 
 const RESERVED_SHORTCUTS: string[] = ["1", "2", "3", "4", "5", "6", "7", "-", "=", "W", "S", "F", "D", "M", "Q", "T", "H"];
 
@@ -123,7 +124,7 @@ describe("DoorJam tool modes", () => {
   });
 
   it("does not reuse reserved or duplicate shortcuts", () => {
-    const shortcuts = [DOORJAM_TOOL_SHORTCUT, PLAYER_OPERATION_SHORTCUT, DYNAMIC_FOG_EDITOR_SHORTCUT, ...Object.values(DOOR_ACTION_SHORTCUTS)];
+    const shortcuts = [DOORJAM_TOOL_SHORTCUT, PLAYER_OPERATION_SHORTCUT, DYNAMIC_FOG_EDITOR_SHORTCUT, CREATE_DOOR_MODE_SHORTCUT, ...Object.values(DOOR_ACTION_SHORTCUTS)];
     expect(shortcuts.filter((shortcut) => RESERVED_SHORTCUTS.includes(shortcut))).toEqual([]);
     expect(new Set(shortcuts).size).toBe(shortcuts.length);
   });

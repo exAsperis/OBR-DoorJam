@@ -1,1 +1,82 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="currentColor" d="M4 3h13a2 2 0 0 1 2 2v14h2v2H3v-2h2V5a2 2 0 0 1 2-2Zm3 2v14h10V5Zm7 7.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2Z"/></svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 24 24"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="tool-create-door.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1">
+    <pattern
+       inkscape:collect="always"
+       xlink:href="#Checkerboard"
+       preserveAspectRatio="xMidYMid"
+       id="pattern6"
+       patternTransform="matrix(2.246,0,0,2.246,-2.3033419,-2.3033419)"
+       x="0"
+       y="0" />
+    <pattern
+       inkscape:collect="always"
+       style="fill:#000000"
+       patternUnits="userSpaceOnUse"
+       width="2"
+       height="2"
+       patternTransform="translate(0,0) scale(10,10)"
+       id="Checkerboard"
+       inkscape:stockid="Checkerboard"
+       preserveAspectRatio="xMidYMid"
+       inkscape:isstock="true"
+       inkscape:label="Checkerboard">
+      <rect
+   style="stroke:none"
+   x="0"
+   y="0"
+   width="1"
+   height="1"
+   id="rect209" />
+
+      <rect
+   style="stroke:none"
+   x="1"
+   y="1"
+   width="1"
+   height="1"
+   id="rect211" />
+
+    </pattern>
+  </defs>
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="24.3125"
+     inkscape:cx="3.5989717"
+     inkscape:cy="19.187661"
+     inkscape:window-width="2560"
+     inkscape:window-height="1369"
+     inkscape:window-x="1072"
+     inkscape:window-y="259"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg1" />
+  <path
+     fill="currentColor"
+     d="m 11.721165,20.343616 v 2.38389 H 1.2724936 v -2.38389 H 3.6563839 V 3.6563839 c 0,-1.3165863 1.067304,-2.3838903 2.3838903,-2.3838903 H 2.4644387 11.954039 V 3.6563839 H 6.0402742 V 20.343616 M 14.38389,12.595973 c 1.58926,0 1.58926,2.38389 0,2.38389 -1.589259,0 -1.589259,-2.38389 0,-2.38389 z"
+     id="path1"
+     sodipodi:nodetypes="cccccsccccccsss"
+     style="stroke-width:1.19195" />
+  <path
+     fill="currentColor"
+     d="M 2.4644387,1.2724936 H 17.959726 a 2.3838903,2.3838903 0 0 1 2.38389,2.3838903 V 20.343616 h 2.38389 v 2.38389 H 1.2724936 v -2.38389 H 3.6563839 V 3.6563839 A 2.3838903,2.3838903 0 0 1 6.0402742,1.2724936 Z M 6.0402742,3.6563839 V 20.343616 H 17.959726 V 3.6563839 Z M 14.38389,12.595973 a 1.1919452,1.1919452 0 1 1 0,2.38389 1.1919452,1.1919452 0 0 1 0,-2.38389 z"
+     id="path2"
+     style="display:inline;fill:url(#pattern6);stroke-width:1.19195" />
+</svg>

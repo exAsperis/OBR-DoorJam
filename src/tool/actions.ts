@@ -159,7 +159,7 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
   // normalized fail-open preferences so upgrades gain the Stage Manager key.
   await OBR.tool.setMetadata(DOORJAM_TOOL_ID, { [DOORJAM_TOOL_PREFERENCES_KEY]: preferences });
   let removeDynamicFogEditor: (() => void) | undefined;
-  const removeCreateDoor = role === "GM" ? await setupCreateDoorMode() : undefined;
+  let removeCreateDoor: (() => void) | undefined;
   const removeDynamicFogSelection = role === "GM" ? await setupDynamicFogSelectionMode() : undefined;
   const removeDynamicFogChoice = role === "GM" ? OBR.broadcast.onMessage(DYNAMIC_FOG_LINK_CHOICE_CHANNEL, (event) => {
     const data = event.data as { imageId?: unknown; choice?: unknown; reason?: unknown };
@@ -170,6 +170,7 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
   }) : undefined;
   for (const action of actions) {
     if (role !== "GM" && action !== "operate") continue;
+    if (role === "GM" && action === "setImages") removeCreateDoor = await setupCreateDoorMode();
     const definition = DOOR_ACTIONS[action];
     const providerPreference = action === "link" ? "dynamicFog" : action === "linkSmoke" ? "smoke" : action === "linkStageManager" ? "stageManager" : null;
     const visibilityMetadata = providerPreference
