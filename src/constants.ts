@@ -5,6 +5,7 @@ export const EXTENSION_NAME = "DoorJam";
 export const DOORJAM_METADATA_KEY = `${EXTENSION_ID}/door`;
 export const DOORJAM_SETTINGS_KEY = `${EXTENSION_ID}/settings`;
 export const DOORJAM_TOOL_PREFERENCES_KEY = `${EXTENSION_ID}/tool-preferences`;
+export const DYNAMIC_FOG_SELECTION_ACTIVE_KEY = `${EXTENSION_ID}/dynamic-fog-selection-active`;
 export const GENERATED_DOOR_METADATA_KEY = `${EXTENSION_ID}/generated-door`;
 export const GENERATED_DOOR_SETTINGS_KEY = `${EXTENSION_ID}/generated-door-settings`;
 export const GENERATED_DOOR_SETTINGS_CHANNEL = `${EXTENSION_ID}/generated-door-settings-change`;

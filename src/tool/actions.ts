@@ -164,8 +164,7 @@ export async function setupDoorJamTool(suppliedPreferences?: DoorJamToolPreferen
   const removeDynamicFogChoice = role === "GM" ? OBR.broadcast.onMessage(DYNAMIC_FOG_LINK_CHOICE_CHANNEL, (event) => {
     const data = event.data as { imageId?: unknown; choice?: unknown; reason?: unknown };
     if (data?.choice === "select" && typeof data.imageId === "string" && data.imageId.length <= 200) {
-      const ambiguous = typeof data.reason === "string" && data.reason.startsWith("ambiguous");
-      void beginDynamicFogSelection(data.imageId, ambiguous ? "More than one Dynamic Fog door matches this image. Click the door you want to link." : undefined);
+      void beginDynamicFogSelection(data.imageId);
     }
   }) : undefined;
   for (const action of actions) {
