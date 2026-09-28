@@ -33,4 +33,15 @@ describe("generated door popover rotation", () => {
     expect(mocks.setSettings).toHaveBeenCalledWith(expect.objectContaining({ placementRotation: 45 }), 100);
     expect(mocks.send).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ placementRotation: 45 }), { destination: "LOCAL" });
   });
+
+  it("shows direction and percentage controls for single sliding doors", async () => {
+    mocks.getSettings.mockResolvedValue({ version: 1, type: "slide", leaves: "single", style: "plain", width: 100, thickness: 25, color: "#8b5a2b", opensToward: "left", openWidth: 40, showKnob: false, placementRotation: 0 });
+    render(<GeneratedDoorPopover/>);
+    expect(await screen.findByText("Opens toward")).toBeTruthy();
+    expect(screen.queryByText("Hinge side")).toBeNull();
+    expect((screen.getByLabelText("Open width percentage") as HTMLInputElement).value).toBe("40");
+    expect(screen.queryByLabelText("Open angle in degrees")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Open width slider"), { target: { value: "75" } });
+    await waitFor(() => expect(mocks.send).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ openWidth: 75 }), { destination: "LOCAL" }));
+  });
 });
