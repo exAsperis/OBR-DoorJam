@@ -1,6 +1,6 @@
 {
   "name": "DoorJam (Local)",
-  "version": "0.16.2",
+  "version": "0.16.3",
   "manifest_version": 1,
   "description": "Local development build of DoorJam.",
   "author": "es Asperis",

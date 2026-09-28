@@ -31,6 +31,7 @@ export function appendPlankLines(out: PathCommand[], x: number, y: number, width
 }
 export function appendHingeMarks(out: PathCommand[], x: number, y: number, thickness: number, metrics: DoorDetailMetrics) {
   appendCircleOrRing(out, x, y, Math.max(metrics.strokeWidth, thickness / 2));
+  appendCircleOrRing(out, x, y, Math.max(metrics.strokeWidth * 0.75, thickness * 0.06));
 }
 export function appendTrapHingeMarks(out: PathCommand[], x: number, y: number, depth: number, metrics: DoorDetailMetrics) {
   appendLine(out, x, y - Math.min(depth / 2, metrics.hingeSize), x, y + Math.min(depth / 2, metrics.hingeSize));
